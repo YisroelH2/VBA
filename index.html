@@ -30,6 +30,7 @@
     .small-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #cbd5e1; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; vertical-align: middle; margin-right: 4px; }
     .small-check.checked { border-color: #b45309; background: #b45309; }
     .hidden { display: none !important; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; }
   </style>
 </head>
 <body>
@@ -58,15 +59,16 @@
         <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:2px">🕍 Maaser Owed (10%)</div>
         <div id="maaserDisplay" style="font-size:26px;font-weight:700;color:#6b7280">$0.00</div>
       </div>
-      <!-- Paid button (shown when owed > 0) -->
-      <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="confirmMaaser()">✓ Paid Maaser</button>
-      <!-- Paid badge (shown after paying, until new maaser accrues) -->
+      <div style="display:flex; gap:8px;">
+        <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button>
+        <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="confirmMaaser()">✓ Paid Maaser</button>
+      </div>
       <div id="maaserPaidBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px">
         <span style="font-size:18px">✅</span>
         <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
       </div>
     </div>
- <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button> </div>
+  </div>
 
   <!-- Confirm Maaser -->
   <div id="maaserConfirm" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:12px">
@@ -78,7 +80,7 @@
     </div>
   </div>
 
-  <!-- Set Balance -->
+  <!-- Set Balance Panel -->
   <div id="setBalancePanel" class="hidden" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
     <div style="font-weight:600;margin-bottom:8px">Set Starting Balance</div>
     <input id="newBalanceInput" class="input" type="number" placeholder="e.g. 500" style="margin-bottom:10px" />
@@ -110,13 +112,11 @@
     </div>
   </div>
 
-  <!-- Search -->
   <input id="searchInput" class="input" placeholder="🔍 Search transactions..." style="margin-bottom:12px;display:none" oninput="renderTxList()" />
   <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
   <div id="txList"></div>
 </div>
 
-<!-- Edit Modal -->
 <div id="editModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:14px">✏️ Edit Transaction</div>
@@ -140,21 +140,13 @@
   </div>
 </div>
 
+<div id="toast" class="hidden"></div>
+
 <script>
 const STORAGE_KEY = "vba_v3";
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
-  async function sheetAdd(tx) {
-    sendToSheet({ ...tx, action: 'add' });
-}
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
 
-async function sheetDelete(id) {
-    sendToSheet({ id, action: 'delete' });
-}
-
-async function sheetEdit(tx) {
-    sendToSheet({ ...tx, action: 'edit' });
-}
-
+// --- Google Sheets Integration ---
 async function sendToSheet(data) {
     try {
         await fetch(SCRIPT_URL, {
@@ -166,6 +158,22 @@ async function sendToSheet(data) {
         console.error("Backup failed", e);
     }
 }
+
+function sheetAdd(tx) { sendToSheet({ ...tx, action: 'add' }); }
+function sheetDelete(id) { sendToSheet({ id, action: 'delete' }); }
+function sheetEdit(tx) { sendToSheet({ ...tx, action: 'edit' }); }
+
+async function sheetSyncAll() {
+    showToast("Syncing with Cloud...");
+    try {
+        await sendToSheet({ action: 'sync', transactions: state.transactions });
+        showToast("Cloud Sync Complete! ☁️");
+    } catch (e) {
+        showToast("Sync Failed ❌");
+    }
+}
+
+// --- App Logic ---
 let state = load();
 let formType = "expense", formMaaser = false;
 let editId = null, editType = "expense", editMaaser = false;
@@ -180,22 +188,28 @@ function today() { return new Date().toISOString().slice(0,10); }
 function show(id) { document.getElementById(id).classList.remove("hidden"); }
 function hide(id) { document.getElementById(id).classList.add("hidden"); }
 
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.remove("hidden");
+    setTimeout(() => t.classList.add("hidden"), 3000);
+}
+
 function render() {
   const bal = state.balance;
   const balEl = document.getElementById("balanceDisplay");
   balEl.textContent = fmt(bal);
   balEl.style.color = bal >= 0 ? "#4ade80" : "#f87171";
+  
   const tIn = state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
   const tOut = state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
   document.getElementById("totalIn").textContent = "+"+fmt(tIn);
   document.getElementById("totalOut").textContent = "-"+fmt(tOut);
 
-  const mo = state.maaserOwed;sheetAdd(tx);
-showToast("Saved ✓");
+  const mo = state.maaserOwed;
   document.getElementById("maaserDisplay").textContent = fmt(mo);
   document.getElementById("maaserDisplay").style.color = mo > 0 ? "#b45309" : "#16a34a";
 
-  // Show button only when owed > 0, show badge when owed == 0 and has been paid before
   if (mo > 0) {
     show("paidMaaserBtn"); hide("maaserPaidBadge");
   } else if (state.maaserEverPaid) {
@@ -263,8 +277,6 @@ function setFormType(type) {
 function toggleFormMaaser() {
   formMaaser = !formMaaser;
   document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
-  const amt = parseFloat(document.getElementById("formAmount").value);
-  document.getElementById("maaserLabel").textContent = formMaaser && !isNaN(amt) && amt>0 ? `Count for Maaser — adds ${fmt(amt*0.1)}` : "Count for Maaser (10%)";
 }
 
 function saveTx() {
@@ -278,8 +290,10 @@ function saveTx() {
   state.transactions.unshift(tx);
   state.balance += delta;
   state.maaserOwed += maaserAmt;
-  // if new maaser just accrued, hide the "all paid" badge
   if (maaserAmt > 0) state.maaserEverPaid = false;
+  
+  sheetAdd(tx);
+  showToast("Saved ✓");
   hide("txForm");
   render();
 }
@@ -289,7 +303,8 @@ function deleteTx(id) {
   if (idx===-1) return;
   const tx = state.transactions[idx];
   state.transactions.splice(idx,1);
-  state.balance -= tx.delta; sheetDelete(id);
+  state.balance -= tx.delta; 
+  sheetDelete(id);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
   render();
@@ -328,6 +343,7 @@ function clearMaaser() {
   state.transactions = state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));
   state.maaserOwed = 0;
   state.maaserEverPaid = true;
+  sheetAdd(tx);
   hide("maaserConfirm");
   render();
 }
@@ -387,13 +403,14 @@ function saveEdit() {
   state.balance += (newDelta-oldDelta);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
- sheetEdit(tx);
-showToast("Updated ✓"); hide("editModal");
+  
+  sheetEdit(tx);
+  showToast("Updated ✓"); 
+  hide("editModal");
   render();
 }
 
 document.getElementById("formDate").value = today();
-if (!state.maaserEverPaid) state.maaserEverPaid = false;
 render();
 
 if ('serviceWorker' in navigator) {
