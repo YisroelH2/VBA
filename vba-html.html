@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Bank Account</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; }
+    #root { max-width: 520px; margin: 0 auto; }
+    button { cursor: pointer; font-family: inherit; }
+    input { font-family: inherit; }
+    .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+    .modal { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; }
+    .row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; }
+    .btn { border: none; border-radius: 8px; padding: 9px; font-weight: 600; font-size: 13px; }
+    .btn-dark { background: #1e293b; color: #fff; flex: 1; }
+    .btn-light { background: #f1f5f9; color: #333; flex: 1; }
+    .type-btn { flex: 1; padding: 7px 0; border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 600; font-size: 13px; background: #fff; color: #64748b; }
+    .type-btn.income.active { border-color: #16a34a; background: #dcfce7; color: #16a34a; }
+    .type-btn.expense.active { border-color: #dc2626; background: #fee2e2; color: #dc2626; }
+    .checkbox { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #cbd5e1; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+    .checkbox.checked { border-color: #b45309; background: #b45309; }
+    .small-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #cbd5e1; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; vertical-align: middle; margin-right: 4px; }
+    .small-check.checked { border-color: #b45309; background: #b45309; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div style="text-align:center;font-weight:700;font-size:18px;color:#1e293b;margin-bottom:12px">💳 Virtual Bank Account</div>
+
+  <!-- Header -->
+  <div style="background:#1e293b;border-radius:16px;padding:24px 20px;margin-bottom:12px;color:#fff">
+    <div style="font-size:13px;opacity:0.6;margin-bottom:4px">Current Balance</div>
+    <div id="balanceDisplay" style="font-size:40px;font-weight:700;color:#4ade80">$0.00</div>
+    <div style="display:flex;gap:20px;margin-top:12px">
+      <div><div style="font-size:11px;opacity:0.5">TOTAL IN</div><div id="totalIn" style="font-size:15px;color:#4ade80">+$0.00</div></div>
+      <div><div style="font-size:11px;opacity:0.5">TOTAL OUT</div><div id="totalOut" style="font-size:15px;color:#f87171">-$0.00</div></div>
+    </div>
+    <div class="row" style="margin-top:16px;margin-bottom:0">
+      <button class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="openForm('income')">+ Add Income</button>
+      <button class="btn" style="flex:1;background:#dc2626;color:#fff" onclick="openForm('expense')">− Add Expense</button>
+      <button class="btn" style="background:#334155;color:#fff;padding:8px 12px" onclick="show('setBalancePanel')">⚙</button>
+    </div>
+  </div>
+
+  <!-- Maaser Box -->
+  <div style="background:#fefce8;border:1px solid #fde047;border-radius:12px;padding:14px 16px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:2px">🕍 Maaser Owed (10%)</div>
+        <div id="maaserDisplay" style="font-size:26px;font-weight:700;color:#6b7280">$0.00</div>
+      </div>
+      <!-- Paid button (shown when owed > 0) -->
+      <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="confirmMaaser()">✓ Paid Maaser</button>
+      <!-- Paid badge (shown after paying, until new maaser accrues) -->
+      <div id="maaserPaidBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px">
+        <span style="font-size:18px">✅</span>
+        <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Maaser -->
+  <div id="maaserConfirm" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:600;margin-bottom:6px">Deduct <span id="maaserConfirmAmt"></span> and log as paid?</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:10px">This adds a "🕍 Maaser Payment" expense and resets Maaser to $0.</div>
+    <div class="row" style="margin-bottom:0">
+      <button class="btn" style="flex:1;background:#b45309;color:#fff" onclick="clearMaaser()">Yes, log & deduct</button>
+      <button class="btn btn-light" onclick="hide('maaserConfirm')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Set Balance -->
+  <div id="setBalancePanel" class="hidden" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
+    <div style="font-weight:600;margin-bottom:8px">Set Starting Balance</div>
+    <input id="newBalanceInput" class="input" type="number" placeholder="e.g. 500" style="margin-bottom:10px" />
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="setStartBalance()">Set</button>
+      <button class="btn btn-light" onclick="hide('setBalancePanel')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add Transaction Form -->
+  <div id="txForm" class="hidden" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
+    <div id="formTitle" style="font-weight:600;margin-bottom:12px">Add Transaction</div>
+    <div class="row">
+      <button id="typeIncome" class="type-btn income" onclick="setFormType('income')">Income</button>
+      <button id="typeExpense" class="type-btn expense active" onclick="setFormType('expense')">Expense</button>
+    </div>
+    <input id="formDesc" class="input" placeholder="Description" style="margin-bottom:8px" />
+    <div class="row">
+      <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
+      <input id="formDate" class="input" type="date" style="flex:1" />
+    </div>
+    <div id="maaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleFormMaaser()">
+      <div id="formMaaserCheck" class="checkbox"></div>
+      <span id="maaserLabel" style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="saveTx()">Save</button>
+      <button class="btn btn-light" onclick="hide('txForm')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <input id="searchInput" class="input" placeholder="🔍 Search transactions..." style="margin-bottom:12px;display:none" oninput="renderTxList()" />
+  <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
+  <div id="txList"></div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px">✏️ Edit Transaction</div>
+    <div class="row">
+      <button id="editTypeIncome" class="type-btn income" onclick="setEditType('income')">Income</button>
+      <button id="editTypeExpense" class="type-btn expense active" onclick="setEditType('expense')">Expense</button>
+    </div>
+    <input id="editDesc" class="input" placeholder="Description" style="margin-bottom:8px" />
+    <div class="row">
+      <input id="editAmount" class="input" type="number" placeholder="Amount" style="flex:1" />
+      <input id="editDate" class="input" type="date" style="flex:1" />
+    </div>
+    <div id="editMaaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleEditMaaser()">
+      <div id="editMaaserCheck" class="checkbox"></div>
+      <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="saveEdit()">Save</button>
+      <button class="btn btn-light" onclick="hide('editModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = "vba_v3";
+let state = load();
+let formType = "expense", formMaaser = false;
+let editId = null, editType = "expense", editMaaser = false;
+
+function load() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch {}
+  return { balance: 0, transactions: [], maaserOwed: 0, maaserEverPaid: false };
+}
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {} }
+function fmt(n) { return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n); }
+function today() { return new Date().toISOString().slice(0,10); }
+function show(id) { document.getElementById(id).classList.remove("hidden"); }
+function hide(id) { document.getElementById(id).classList.add("hidden"); }
+
+function render() {
+  const bal = state.balance;
+  const balEl = document.getElementById("balanceDisplay");
+  balEl.textContent = fmt(bal);
+  balEl.style.color = bal >= 0 ? "#4ade80" : "#f87171";
+  const tIn = state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const tOut = state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  document.getElementById("totalIn").textContent = "+"+fmt(tIn);
+  document.getElementById("totalOut").textContent = "-"+fmt(tOut);
+
+  const mo = state.maaserOwed;
+  document.getElementById("maaserDisplay").textContent = fmt(mo);
+  document.getElementById("maaserDisplay").style.color = mo > 0 ? "#b45309" : "#16a34a";
+
+  // Show button only when owed > 0, show badge when owed == 0 and has been paid before
+  if (mo > 0) {
+    show("paidMaaserBtn"); hide("maaserPaidBadge");
+  } else if (state.maaserEverPaid) {
+    hide("paidMaaserBtn"); show("maaserPaidBadge");
+    document.getElementById("maaserPaidBadge").style.display = "flex";
+  } else {
+    hide("paidMaaserBtn"); hide("maaserPaidBadge");
+  }
+
+  renderTxList();
+  save();
+}
+
+function renderTxList() {
+  const search = (document.getElementById("searchInput").value || "").toLowerCase();
+  const filtered = state.transactions.filter(t => t.desc.toLowerCase().includes(search) || t.date.includes(search));
+  const list = document.getElementById("txList");
+  const empty = document.getElementById("emptyState");
+  if (state.transactions.length === 0) { show("emptyState"); empty.textContent = "No transactions yet. Add your first one above!"; list.innerHTML = ""; document.getElementById("searchInput").style.display="none"; return; }
+  document.getElementById("searchInput").style.display = "block";
+  if (filtered.length === 0) { show("emptyState"); empty.textContent = "No results found."; list.innerHTML = ""; return; }
+  hide("emptyState");
+  list.innerHTML = filtered.map(tx => `
+    <div class="card">
+      <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${tx.type==="income"?"↑":"↓"}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tx.desc}</div>
+        <div style="font-size:12px;color:#94a3b8">${tx.date} · balance after: ${fmt(tx.balance)}</div>
+        ${tx.type==="income"?`<div style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer" onclick="toggleMaaser(${tx.id})">
+          <div class="small-check ${tx.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${tx.maaser?"✓":""}</span></div>
+          <span style="font-size:11px;color:${tx.maaser?"#b45309":"#94a3b8"}">${tx.maaser?"Maaser: "+fmt(tx.maaserAmt):"Count for Maaser"}</span>
+        </div>`:""}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700;font-size:15px;color:${tx.type==="income"?"#16a34a":"#dc2626"}">${tx.type==="income"?"+":"−"}${fmt(tx.amount)}</div>
+        <button onclick="deleteTx(${tx.id})" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:0;margin-top:2px;display:block">delete</button>
+        <button onclick="openEdit(${tx.id})" style="font-size:11px;color:#6366f1;background:none;border:none;cursor:pointer;padding:0;margin-top:1px;display:block">edit</button>
+      </div>
+    </div>`).join("");
+}
+
+function openForm(type) {
+  formType = type; formMaaser = false;
+  document.getElementById("formDesc").value = "";
+  document.getElementById("formAmount").value = "";
+  document.getElementById("formDate").value = today();
+  document.getElementById("formTitle").textContent = type==="income"?"➕ Add Income":"➖ Add Expense";
+  document.getElementById("typeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  const mr = document.getElementById("maaserRow");
+  if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
+  document.getElementById("formMaaserCheck").className = "checkbox";
+  show("txForm");
+}
+
+function setFormType(type) {
+  formType = type; formMaaser = false;
+  document.getElementById("typeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  const mr = document.getElementById("maaserRow");
+  if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
+  document.getElementById("formMaaserCheck").className = "checkbox";
+}
+
+function toggleFormMaaser() {
+  formMaaser = !formMaaser;
+  document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
+  const amt = parseFloat(document.getElementById("formAmount").value);
+  document.getElementById("maaserLabel").textContent = formMaaser && !isNaN(amt) && amt>0 ? `Count for Maaser — adds ${fmt(amt*0.1)}` : "Count for Maaser (10%)";
+}
+
+function saveTx() {
+  const desc = document.getElementById("formDesc").value.trim();
+  const amt = parseFloat(document.getElementById("formAmount").value);
+  const date = document.getElementById("formDate").value;
+  if (!desc || isNaN(amt) || amt<=0) return;
+  const delta = formType==="income"?amt:-amt;
+  const maaserAmt = (formType==="income"&&formMaaser)?amt*0.1:0;
+  const tx = { id:Date.now(), type:formType, desc, amount:amt, delta, date, balance:state.balance+delta, maaser:formType==="income"&&formMaaser, maaserAmt };
+  state.transactions.unshift(tx);
+  state.balance += delta;
+  state.maaserOwed += maaserAmt;
+  // if new maaser just accrued, hide the "all paid" badge
+  if (maaserAmt > 0) state.maaserEverPaid = false;
+  hide("txForm");
+  render();
+}
+
+function deleteTx(id) {
+  const idx = state.transactions.findIndex(t=>t.id===id);
+  if (idx===-1) return;
+  const tx = state.transactions[idx];
+  state.transactions.splice(idx,1);
+  state.balance -= tx.delta;
+  recalcBalances();
+  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  render();
+}
+
+function recalcBalances() {
+  if (!state.transactions.length) return;
+  const txs = [...state.transactions].reverse();
+  let s = state.balance;
+  for (const t of txs) s -= t.delta;
+  let running = s;
+  for (let i = txs.length-1; i>=0; i--) { running += txs[i].delta; txs[i].balance = running; }
+  state.transactions = [...txs].reverse();
+}
+
+function toggleMaaser(id) {
+  const tx = state.transactions.find(t=>t.id===id);
+  if (!tx||tx.type!=="income") return;
+  tx.maaser = !tx.maaser;
+  tx.maaserAmt = tx.maaser?tx.amount*0.1:0;
+  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  if (state.maaserOwed > 0) state.maaserEverPaid = false;
+  render();
+}
+
+function confirmMaaser() {
+  document.getElementById("maaserConfirmAmt").textContent = fmt(state.maaserOwed);
+  show("maaserConfirm");
+}
+
+function clearMaaser() {
+  const amt = state.maaserOwed;
+  const tx = { id:Date.now(), type:"expense", desc:"🕍 Maaser Payment", amount:amt, delta:-amt, date:today(), balance:state.balance-amt, maaser:false, maaserAmt:0 };
+  state.transactions.unshift(tx);
+  state.balance -= amt;
+  state.transactions = state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));
+  state.maaserOwed = 0;
+  state.maaserEverPaid = true;
+  hide("maaserConfirm");
+  render();
+}
+
+function setStartBalance() {
+  const val = parseFloat(document.getElementById("newBalanceInput").value);
+  if (isNaN(val)) return;
+  const txs = [...state.transactions].reverse();
+  let running = val;
+  for (let i=0;i<txs.length;i++) { running+=txs[i].delta; txs[i].balance=running; }
+  state.transactions = txs.reverse();
+  state.balance = state.transactions.length>0?state.transactions[0].balance:val;
+  hide("setBalancePanel");
+  render();
+}
+
+function openEdit(id) {
+  const tx = state.transactions.find(t=>t.id===id);
+  if (!tx) return;
+  editId=id; editType=tx.type; editMaaser=tx.maaser||false;
+  document.getElementById("editDesc").value = tx.desc;
+  document.getElementById("editAmount").value = tx.amount;
+  document.getElementById("editDate").value = tx.date;
+  document.getElementById("editTypeIncome").className = "type-btn income"+(tx.type==="income"?" active":"");
+  document.getElementById("editTypeExpense").className = "type-btn expense"+(tx.type==="expense"?" active":"");
+  const mr = document.getElementById("editMaaserRow");
+  if (tx.type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
+  document.getElementById("editMaaserCheck").className = "checkbox"+(editMaaser?" checked":"");
+  show("editModal");
+}
+
+function setEditType(type) {
+  editType=type; editMaaser=false;
+  document.getElementById("editTypeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("editTypeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  const mr = document.getElementById("editMaaserRow");
+  if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
+  document.getElementById("editMaaserCheck").className = "checkbox";
+}
+
+function toggleEditMaaser() {
+  editMaaser=!editMaaser;
+  document.getElementById("editMaaserCheck").className = "checkbox"+(editMaaser?" checked":"");
+}
+
+function saveEdit() {
+  const desc = document.getElementById("editDesc").value.trim();
+  const amt = parseFloat(document.getElementById("editAmount").value);
+  const date = document.getElementById("editDate").value;
+  if (!desc||isNaN(amt)||amt<=0) return;
+  const tx = state.transactions.find(t=>t.id===editId);
+  if (!tx) return;
+  const oldDelta = tx.delta;
+  const newDelta = editType==="income"?amt:-amt;
+  tx.type=editType; tx.desc=desc; tx.amount=amt; tx.delta=newDelta; tx.date=date;
+  tx.maaser=editType==="income"&&editMaaser; tx.maaserAmt=tx.maaser?amt*0.1:0;
+  state.balance += (newDelta-oldDelta);
+  recalcBalances();
+  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  hide("editModal");
+  render();
+}
+
+document.getElementById("formDate").value = today();
+if (!state.maaserEverPaid) state.maaserEverPaid = false;
+render();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
