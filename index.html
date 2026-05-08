@@ -66,7 +66,7 @@
         <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
       </div>
     </div>
-  </div>
+ <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button> </div>
 
   <!-- Confirm Maaser -->
   <div id="maaserConfirm" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:12px">
@@ -142,6 +142,30 @@
 
 <script>
 const STORAGE_KEY = "vba_v3";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
+  async function sheetAdd(tx) {
+    sendToSheet({ ...tx, action: 'add' });
+}
+
+async function sheetDelete(id) {
+    sendToSheet({ id, action: 'delete' });
+}
+
+async function sheetEdit(tx) {
+    sendToSheet({ ...tx, action: 'edit' });
+}
+
+async function sendToSheet(data) {
+    try {
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(data)
+        });
+    } catch (e) {
+        console.error("Backup failed", e);
+    }
+}
 let state = load();
 let formType = "expense", formMaaser = false;
 let editId = null, editType = "expense", editMaaser = false;
@@ -166,7 +190,8 @@ function render() {
   document.getElementById("totalIn").textContent = "+"+fmt(tIn);
   document.getElementById("totalOut").textContent = "-"+fmt(tOut);
 
-  const mo = state.maaserOwed;
+  const mo = state.maaserOwed;sheetAdd(tx);
+showToast("Saved ✓");
   document.getElementById("maaserDisplay").textContent = fmt(mo);
   document.getElementById("maaserDisplay").style.color = mo > 0 ? "#b45309" : "#16a34a";
 
@@ -264,7 +289,7 @@ function deleteTx(id) {
   if (idx===-1) return;
   const tx = state.transactions[idx];
   state.transactions.splice(idx,1);
-  state.balance -= tx.delta;
+  state.balance -= tx.delta; sheetDelete(id);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
   render();
@@ -362,7 +387,8 @@ function saveEdit() {
   state.balance += (newDelta-oldDelta);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  hide("editModal");
+ sheetEdit(tx);
+showToast("Updated ✓"); hide("editModal");
   render();
 }
 
