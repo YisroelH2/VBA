@@ -37,7 +37,6 @@
 <div id="root">
   <div style="text-align:center;font-weight:700;font-size:18px;color:#1e293b;margin-bottom:12px">💳 Virtual Bank Account</div>
 
-  <!-- Header -->
   <div style="background:#1e293b;border-radius:16px;padding:24px 20px;margin-bottom:12px;color:#fff">
     <div style="font-size:13px;opacity:0.6;margin-bottom:4px">Current Balance</div>
     <div id="balanceDisplay" style="font-size:40px;font-weight:700;color:#4ade80">$0.00</div>
@@ -52,7 +51,6 @@
     </div>
   </div>
 
-  <!-- Maaser Box -->
   <div style="background:#fefce8;border:1px solid #fde047;border-radius:12px;padding:14px 16px;margin-bottom:12px">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
@@ -70,7 +68,13 @@
     </div>
   </div>
 
-  <!-- Confirm Maaser -->
+  <div id="importPanel" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:#475569">Bulk Import List</div>
+    <!-- FIX 2: Updated placeholder to show $ is optional -->
+    <textarea id="importBox" class="input" style="height:60px;font-family:monospace;font-size:11px" placeholder="+$50 Amazon  or  +50 Amazon&#10;-$5.50 Lunch  or  -5.50 Lunch"></textarea>
+    <button class="btn btn-dark" style="width:100%;margin-top:8px" onclick="runBulkImport()">Import These Transactions</button>
+  </div>
+
   <div id="maaserConfirm" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-weight:600;margin-bottom:6px">Deduct <span id="maaserConfirmAmt"></span> and log as paid?</div>
     <div style="font-size:13px;color:#64748b;margin-bottom:10px">This adds a "🕍 Maaser Payment" expense and resets Maaser to $0.</div>
@@ -80,7 +84,6 @@
     </div>
   </div>
 
-  <!-- Set Balance Panel -->
   <div id="setBalancePanel" class="hidden" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
     <div style="font-weight:600;margin-bottom:8px">Set Starting Balance</div>
     <input id="newBalanceInput" class="input" type="number" placeholder="e.g. 500" style="margin-bottom:10px" />
@@ -90,7 +93,6 @@
     </div>
   </div>
 
-  <!-- Add Transaction Form -->
   <div id="txForm" class="hidden" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
     <div id="formTitle" style="font-weight:600;margin-bottom:12px">Add Transaction</div>
     <div class="row">
@@ -147,30 +149,26 @@ const STORAGE_KEY = "vba_v3";
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
 
 // --- Google Sheets Integration ---
-async function sendToSheet(data) {
-    try {
-        await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify(data)
-        });
-    } catch (e) {
-        console.error("Backup failed", e);
-    }
+function sendToSheet(data) {
+  // FIX 3: No longer async — no fake catch. Just fire-and-forget.
+  data.timestamp = new Date().toISOString();
+  data.lastKnownBalance = state.balance;
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(data)
+  }).catch(() => {}); // silently ignore offline failures
 }
 
-function sheetAdd(tx) { sendToSheet({ ...tx, action: 'add' }); }
+function sheetAdd(tx)    { sendToSheet({ ...tx, action: 'add' }); }
 function sheetDelete(id) { sendToSheet({ id, action: 'delete' }); }
-function sheetEdit(tx) { sendToSheet({ ...tx, action: 'edit' }); }
+function sheetEdit(tx)   { sendToSheet({ ...tx, action: 'edit' }); }
 
-async function sheetSyncAll() {
-    showToast("Syncing with Cloud...");
-    try {
-        await sendToSheet({ action: 'sync', transactions: state.transactions });
-        showToast("Cloud Sync Complete! ☁️");
-    } catch (e) {
-        showToast("Sync Failed ❌");
-    }
+// FIX 3: sheetSyncAll — no fake error state. Delay the "done" toast instead.
+function sheetSyncAll() {
+  showToast("Syncing with Cloud...");
+  sendToSheet({ action: 'sync', transactions: state.transactions });
+  setTimeout(() => showToast("Cloud Sync Complete! ☁️"), 1500);
 }
 
 // --- App Logic ---
@@ -189,10 +187,66 @@ function show(id) { document.getElementById(id).classList.remove("hidden"); }
 function hide(id) { document.getElementById(id).classList.add("hidden"); }
 
 function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.remove("hidden");
-    setTimeout(() => t.classList.add("hidden"), 3000);
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.remove("hidden");
+  setTimeout(() => t.classList.add("hidden"), 3000);
+}
+
+// Bulk Import
+function runBulkImport() {
+  const rawData = document.getElementById("importBox").value;
+  if (!rawData.trim()) return;
+
+  const lines = rawData.trim().split('\n');
+  const baseTime = Date.now();
+  let importedCount = 0;
+
+  lines.forEach((line, index) => {
+    // FIX 2: $ sign is now optional in the regex
+    const match = line.trim().match(/^([+-])\$?([\d.]+)\s+(.+)$/);
+    if (match) {
+      const isIncome = match[1] === '+';
+      const amount = parseFloat(match[2]);
+      const description = match[3].trim();
+      const isMaaserPay = description.toLowerCase().includes('maser') || description.toLowerCase().includes('maaser');
+      const delta = isIncome ? amount : -amount;
+
+      // FIX 1: Maaser is OFF by default for bulk imports, just like the regular form.
+      // Exception: if the description contains "maser/maaser" and it's an expense,
+      // we treat it as a Maaser payment and deduct from owed.
+      const tx = {
+        id: baseTime + index,
+        type: isIncome ? 'income' : 'expense',
+        desc: description,
+        amount,
+        delta,
+        date: today(),
+        balance: state.balance + delta,
+        maaser: false,   // FIX 1: always false — user can toggle manually after import
+        maaserAmt: 0
+      };
+
+      state.transactions.unshift(tx);
+      state.balance += delta;
+
+      // If it's an expense that looks like a Maaser payment, deduct from owed
+      if (!isIncome && isMaaserPay) {
+        state.maaserOwed = Math.max(0, state.maaserOwed - amount);
+      }
+
+      importedCount++;
+    }
+  });
+
+  if (importedCount > 0) {
+    recalcBalances();
+    render();
+    showToast(`Imported ${importedCount} transaction${importedCount > 1 ? 's' : ''}!`);
+    document.getElementById("importBox").value = "";
+  } else {
+    alert('No valid transactions found.\nFormat: +50 Description or -$4.50 Lunch');
+  }
 }
 
 function render() {
@@ -200,10 +254,10 @@ function render() {
   const balEl = document.getElementById("balanceDisplay");
   balEl.textContent = fmt(bal);
   balEl.style.color = bal >= 0 ? "#4ade80" : "#f87171";
-  
-  const tIn = state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+
+  const tIn  = state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
   const tOut = state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
-  document.getElementById("totalIn").textContent = "+"+fmt(tIn);
+  document.getElementById("totalIn").textContent  = "+"+fmt(tIn);
   document.getElementById("totalOut").textContent = "-"+fmt(tOut);
 
   const mo = state.maaserOwed;
@@ -226,12 +280,17 @@ function render() {
 function renderTxList() {
   const search = (document.getElementById("searchInput").value || "").toLowerCase();
   const filtered = state.transactions.filter(t => t.desc.toLowerCase().includes(search) || t.date.includes(search));
-  const list = document.getElementById("txList");
+  const list  = document.getElementById("txList");
   const empty = document.getElementById("emptyState");
-  if (state.transactions.length === 0) { show("emptyState"); empty.textContent = "No transactions yet. Add your first one above!"; list.innerHTML = ""; document.getElementById("searchInput").style.display="none"; return; }
+
+  if (state.transactions.length === 0) {
+    show("emptyState"); empty.textContent = "No transactions yet. Add your first one above!";
+    list.innerHTML = ""; document.getElementById("searchInput").style.display = "none"; return;
+  }
   document.getElementById("searchInput").style.display = "block";
   if (filtered.length === 0) { show("emptyState"); empty.textContent = "No results found."; list.innerHTML = ""; return; }
   hide("emptyState");
+
   list.innerHTML = filtered.map(tx => `
     <div class="card">
       <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${tx.type==="income"?"↑":"↓"}</div>
@@ -257,7 +316,7 @@ function openForm(type) {
   document.getElementById("formAmount").value = "";
   document.getElementById("formDate").value = today();
   document.getElementById("formTitle").textContent = type==="income"?"➕ Add Income":"➖ Add Expense";
-  document.getElementById("typeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeIncome").className  = "type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
@@ -267,7 +326,7 @@ function openForm(type) {
 
 function setFormType(type) {
   formType = type; formMaaser = false;
-  document.getElementById("typeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeIncome").className  = "type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
@@ -281,17 +340,16 @@ function toggleFormMaaser() {
 
 function saveTx() {
   const desc = document.getElementById("formDesc").value.trim();
-  const amt = parseFloat(document.getElementById("formAmount").value);
+  const amt  = parseFloat(document.getElementById("formAmount").value);
   const date = document.getElementById("formDate").value;
   if (!desc || isNaN(amt) || amt<=0) return;
-  const delta = formType==="income"?amt:-amt;
-  const maaserAmt = (formType==="income"&&formMaaser)?amt*0.1:0;
+  const delta     = formType==="income" ? amt : -amt;
+  const maaserAmt = (formType==="income" && formMaaser) ? amt*0.1 : 0;
   const tx = { id:Date.now(), type:formType, desc, amount:amt, delta, date, balance:state.balance+delta, maaser:formType==="income"&&formMaaser, maaserAmt };
   state.transactions.unshift(tx);
-  state.balance += delta;
+  state.balance    += delta;
   state.maaserOwed += maaserAmt;
   if (maaserAmt > 0) state.maaserEverPaid = false;
-  
   sheetAdd(tx);
   showToast("Saved ✓");
   hide("txForm");
@@ -303,7 +361,7 @@ function deleteTx(id) {
   if (idx===-1) return;
   const tx = state.transactions[idx];
   state.transactions.splice(idx,1);
-  state.balance -= tx.delta; 
+  state.balance -= tx.delta;
   sheetDelete(id);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
@@ -322,9 +380,9 @@ function recalcBalances() {
 
 function toggleMaaser(id) {
   const tx = state.transactions.find(t=>t.id===id);
-  if (!tx||tx.type!=="income") return;
-  tx.maaser = !tx.maaser;
-  tx.maaserAmt = tx.maaser?tx.amount*0.1:0;
+  if (!tx || tx.type!=="income") return;
+  tx.maaser    = !tx.maaser;
+  tx.maaserAmt = tx.maaser ? tx.amount*0.1 : 0;
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
   if (state.maaserOwed > 0) state.maaserEverPaid = false;
   render();
@@ -337,11 +395,11 @@ function confirmMaaser() {
 
 function clearMaaser() {
   const amt = state.maaserOwed;
-  const tx = { id:Date.now(), type:"expense", desc:"🕍 Maaser Payment", amount:amt, delta:-amt, date:today(), balance:state.balance-amt, maaser:false, maaserAmt:0 };
+  const tx  = { id:Date.now(), type:"expense", desc:"🕍 Maaser Payment", amount:amt, delta:-amt, date:today(), balance:state.balance-amt, maaser:false, maaserAmt:0 };
   state.transactions.unshift(tx);
   state.balance -= amt;
-  state.transactions = state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));
-  state.maaserOwed = 0;
+  state.transactions  = state.transactions.map(t=>({...t, maaser:false, maaserAmt:0}));
+  state.maaserOwed    = 0;
   state.maaserEverPaid = true;
   sheetAdd(tx);
   hide("maaserConfirm");
@@ -353,9 +411,9 @@ function setStartBalance() {
   if (isNaN(val)) return;
   const txs = [...state.transactions].reverse();
   let running = val;
-  for (let i=0;i<txs.length;i++) { running+=txs[i].delta; txs[i].balance=running; }
+  for (let i=0; i<txs.length; i++) { running += txs[i].delta; txs[i].balance = running; }
   state.transactions = txs.reverse();
-  state.balance = state.transactions.length>0?state.transactions[0].balance:val;
+  state.balance = state.transactions.length > 0 ? state.transactions[0].balance : val;
   hide("setBalancePanel");
   render();
 }
@@ -363,11 +421,11 @@ function setStartBalance() {
 function openEdit(id) {
   const tx = state.transactions.find(t=>t.id===id);
   if (!tx) return;
-  editId=id; editType=tx.type; editMaaser=tx.maaser||false;
-  document.getElementById("editDesc").value = tx.desc;
+  editId = id; editType = tx.type; editMaaser = tx.maaser || false;
+  document.getElementById("editDesc").value   = tx.desc;
   document.getElementById("editAmount").value = tx.amount;
-  document.getElementById("editDate").value = tx.date;
-  document.getElementById("editTypeIncome").className = "type-btn income"+(tx.type==="income"?" active":"");
+  document.getElementById("editDate").value   = tx.date;
+  document.getElementById("editTypeIncome").className  = "type-btn income"+(tx.type==="income"?" active":"");
   document.getElementById("editTypeExpense").className = "type-btn expense"+(tx.type==="expense"?" active":"");
   const mr = document.getElementById("editMaaserRow");
   if (tx.type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
@@ -376,8 +434,8 @@ function openEdit(id) {
 }
 
 function setEditType(type) {
-  editType=type; editMaaser=false;
-  document.getElementById("editTypeIncome").className = "type-btn income"+(type==="income"?" active":"");
+  editType = type; editMaaser = false;
+  document.getElementById("editTypeIncome").className  = "type-btn income"+(type==="income"?" active":"");
   document.getElementById("editTypeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("editMaaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
@@ -385,27 +443,27 @@ function setEditType(type) {
 }
 
 function toggleEditMaaser() {
-  editMaaser=!editMaaser;
+  editMaaser = !editMaaser;
   document.getElementById("editMaaserCheck").className = "checkbox"+(editMaaser?" checked":"");
 }
 
 function saveEdit() {
   const desc = document.getElementById("editDesc").value.trim();
-  const amt = parseFloat(document.getElementById("editAmount").value);
+  const amt  = parseFloat(document.getElementById("editAmount").value);
   const date = document.getElementById("editDate").value;
-  if (!desc||isNaN(amt)||amt<=0) return;
+  if (!desc || isNaN(amt) || amt<=0) return;
   const tx = state.transactions.find(t=>t.id===editId);
   if (!tx) return;
   const oldDelta = tx.delta;
-  const newDelta = editType==="income"?amt:-amt;
-  tx.type=editType; tx.desc=desc; tx.amount=amt; tx.delta=newDelta; tx.date=date;
-  tx.maaser=editType==="income"&&editMaaser; tx.maaserAmt=tx.maaser?amt*0.1:0;
-  state.balance += (newDelta-oldDelta);
+  const newDelta = editType==="income" ? amt : -amt;
+  tx.type = editType; tx.desc = desc; tx.amount = amt; tx.delta = newDelta; tx.date = date;
+  tx.maaser = editType==="income" && editMaaser;
+  tx.maaserAmt = tx.maaser ? amt*0.1 : 0;
+  state.balance += (newDelta - oldDelta);
   recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  
   sheetEdit(tx);
-  showToast("Updated ✓"); 
+  showToast("Updated ✓");
   hide("editModal");
   render();
 }
