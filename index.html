@@ -13,8 +13,9 @@
     body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; }
     #root { max-width: 520px; margin: 0 auto; }
     button { cursor: pointer; font-family: inherit; }
-    input, textarea { font-family: inherit; }
+    input, textarea, select { font-family: inherit; }
     .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .pending-card { background: #fff; border: 1.5px solid #fbbf24; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
     .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
     .modal { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; }
     .row { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -31,15 +32,13 @@
     .small-check.checked { border-color: #b45309; background: #b45309; }
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; }
-
-    /* Lock screen */
     #lockScreen { position: fixed; inset: 0; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
     #lockScreen .lock-icon { font-size: 56px; }
     #lockScreen .lock-title { color: #fff; font-size: 20px; font-weight: 700; }
     #lockScreen .lock-sub { color: #94a3b8; font-size: 14px; text-align: center; padding: 0 32px; }
-    #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
-    #lockScreen .fp-btn:active { background: #475569; }
+    #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
     #lockScreen .fp-error { color: #f87171; font-size: 13px; margin-top: 4px; min-height: 20px; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; background: #dc2626; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -49,7 +48,7 @@
   <div class="lock-icon">💳</div>
   <div class="lock-title">Virtual Bank Account</div>
   <div class="lock-sub">App locked after 30 minutes of inactivity</div>
-  <button class="fp-btn" onclick="triggerBiometric()" title="Unlock with fingerprint">👆</button>
+  <button class="fp-btn" onclick="triggerBiometric()">👆</button>
   <div class="lock-sub" style="margin-top:-8px">Tap to unlock</div>
   <div class="fp-error" id="fpError"></div>
 </div>
@@ -90,9 +89,21 @@
     </div>
   </div>
 
-  <!-- Subtle Import Link -->
-  <div style="text-align:right;margin-bottom:10px;margin-top:-4px">
-    <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import transactions</button>
+  <!-- Pending Queue Section -->
+  <div id="pendingSection" class="hidden" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-weight:700;font-size:14px;color:#92400e">
+        ⏳ Pending Review <span id="pendingBadge" class="badge"></span>
+      </div>
+      <button onclick="dismissAllPending()" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
+    </div>
+    <div id="pendingList"></div>
+  </div>
+
+  <!-- Subtle links row -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:-4px">
+    <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
+    <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import</button>
   </div>
 
   <!-- Maaser Confirm -->
@@ -127,7 +138,6 @@
       <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
       <input id="formDate" class="input" type="date" style="flex:1" />
     </div>
-    <!-- FIX 1: Maaser checkbox starts checked by default for income -->
     <div id="maaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleFormMaaser()">
       <div id="formMaaserCheck" class="checkbox checked"></div>
       <span id="maaserLabel" style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
@@ -144,16 +154,62 @@
   <div id="txList"></div>
 </div>
 
+<!-- Add to Pending Modal -->
+<div id="addPendingModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px">⏳ Add to Pending Queue</div>
+    <div class="row">
+      <button id="pendingTypeExpense" class="type-btn expense active" onclick="setPendingType('expense')">Expense</button>
+      <button id="pendingTypeIncome" class="type-btn income" onclick="setPendingType('income')">Income</button>
+    </div>
+    <input id="pendingDesc" class="input" placeholder="Description (e.g. Amazon charge)" style="margin-bottom:8px" />
+    <div class="row">
+      <input id="pendingAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
+      <select id="pendingSource" class="input" style="flex:1">
+        <option value="">Source (optional)</option>
+        <option>Capital One</option>
+        <option>Amex</option>
+        <option>CashApp</option>
+        <option>TD Bank</option>
+        <option>PayPal</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="addToPending()">Add to Queue</button>
+      <button class="btn btn-light" onclick="hide('addPendingModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Pending Modal -->
+<div id="confirmPendingModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px">⏳ Confirm Transaction</div>
+    <div id="cpSource" style="font-size:12px;color:#94a3b8;margin-bottom:12px"></div>
+    <div id="cpDesc" style="font-size:15px;font-weight:600;margin-bottom:4px"></div>
+    <div id="cpAmt" style="font-size:28px;font-weight:700;margin-bottom:16px"></div>
+    <div style="font-size:13px;color:#475569;margin-bottom:8px;font-weight:600">Add to transactions as:</div>
+    <!-- Maaser toggle inside confirm -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer" id="cpMaaserRow" onclick="toggleCpMaaser()">
+      <div id="cpMaaserCheck" class="checkbox checked"></div>
+      <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <button id="cpConfirmBtn" class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="approvePending()">✓ Add to VBA</button>
+      <button class="btn btn-light" onclick="hide('confirmPendingModal')">Cancel</button>
+    </div>
+    <button onclick="dismissPending()" style="width:100%;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer">✕ Dismiss (not my charge)</button>
+  </div>
+</div>
+
 <!-- Import Modal -->
 <div id="importModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">⬆ Bulk Import</div>
-    <!-- FIX 2: Description is now optional, amount alone is valid -->
     <div style="font-size:12px;color:#64748b;margin-bottom:12px">
-      One transaction per line.<br>
-      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code> &nbsp;or&nbsp;
-      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+$50 Allowance</code> &nbsp;or&nbsp;
-      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-12.50 Groceries</code>
+      One per line. <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code> &nbsp;
+      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-$12.50 Groceries</code>
     </div>
     <textarea id="importBox" class="input" style="height:140px;font-family:monospace;font-size:13px;margin-bottom:12px" placeholder="+200&#10;-$12.50 Groceries&#10;-5"></textarea>
     <div class="row" style="margin-bottom:0">
@@ -206,116 +262,61 @@
 <script>
 const STORAGE_KEY  = "vba_v3";
 const LOCK_KEY     = "vba_last_active";
-const LOCK_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+const LOCK_TIMEOUT = 30 * 60 * 1000;
 const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
 
-// ── Biometric / Lock ─────────────────────────────────────────────
-const isPWA = window.matchMedia('(display-mode: standalone)').matches
-           || window.navigator.standalone === true;
-
+// ── Biometric ────────────────────────────────────────────────────
+const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 let bioCredentialId = localStorage.getItem("vba_cred_id") || null;
 
-function stampActivity() {
-  localStorage.setItem(LOCK_KEY, Date.now().toString());
-}
-
+function stampActivity() { localStorage.setItem(LOCK_KEY, Date.now().toString()); }
 function shouldLock() {
-  if (!isPWA) return false; // only lock in installed PWA, not browser tab
-  const last = parseInt(localStorage.getItem(LOCK_KEY) || "0");
-  return Date.now() - last > LOCK_TIMEOUT;
+  if (!isPWA) return false;
+  return Date.now() - parseInt(localStorage.getItem(LOCK_KEY) || "0") > LOCK_TIMEOUT;
 }
-
 async function registerBiometric() {
-  // Called once on first unlock attempt — registers a platform authenticator
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: "VBA" },
-        user: { id: new Uint8Array(16), name: "user", displayName: "VBA User" },
-        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-        authenticatorSelection: {
-          authenticatorAttachment: "platform", // device biometric only
-          userVerification: "required"
-        },
-        timeout: 60000
-      }
-    });
-    // Store credential id as base64 for future assertions
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: "VBA" },
+      user: { id: new Uint8Array(16), name: "user", displayName: "VBA User" },
+      pubKeyCredParams: [{ type:"public-key", alg:-7 }, { type:"public-key", alg:-257 }],
+      authenticatorSelection: { authenticatorAttachment:"platform", userVerification:"required" },
+      timeout: 60000
+    }});
     const idB64 = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
     localStorage.setItem("vba_cred_id", idB64);
     bioCredentialId = idB64;
     return true;
-  } catch (e) {
-    return false;
-  }
+  } catch { return false; }
 }
-
 async function assertBiometric() {
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const opts = {
-      publicKey: {
-        challenge,
-        userVerification: "required",
-        timeout: 60000
-      }
-    };
-    // If we have a stored credential, narrow to it
+    const opts = { publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), userVerification:"required", timeout:60000 }};
     if (bioCredentialId) {
       const idBytes = Uint8Array.from(atob(bioCredentialId), c => c.charCodeAt(0));
-      opts.publicKey.allowCredentials = [{ type: "public-key", id: idBytes }];
+      opts.publicKey.allowCredentials = [{ type:"public-key", id:idBytes }];
     }
     await navigator.credentials.get(opts);
     return true;
-  } catch (e) {
-    return false;
-  }
+  } catch { return false; }
 }
-
 async function triggerBiometric() {
   document.getElementById("fpError").textContent = "";
-  const supported = window.PublicKeyCredential !== undefined;
-  if (!supported) {
-    // Fallback: no biometric support — just unlock
-    unlock();
-    return;
-  }
-  // Register on first use
+  if (!window.PublicKeyCredential) { unlock(); return; }
   if (!bioCredentialId) {
     const ok = await registerBiometric();
-    if (!ok) {
-      document.getElementById("fpError").textContent = "Biometric setup failed. Try again.";
-      return;
-    }
+    if (!ok) { document.getElementById("fpError").textContent = "Biometric setup failed. Try again."; return; }
   }
   const ok = await assertBiometric();
-  if (ok) {
-    unlock();
-  } else {
-    document.getElementById("fpError").textContent = "Fingerprint not recognised. Try again.";
-  }
+  ok ? unlock() : (document.getElementById("fpError").textContent = "Fingerprint not recognised. Try again.");
 }
-
-function lock() {
-  show("lockScreen");
-}
-
-function unlock() {
-  hide("lockScreen");
-  stampActivity();
-}
-
-// Stamp activity on any interaction
+function lock() { show("lockScreen"); }
+function unlock() { hide("lockScreen"); stampActivity(); }
 document.addEventListener("pointerdown", stampActivity);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && shouldLock()) lock(); });
 
-// Check lock on visibility change (returning to app)
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && shouldLock()) lock();
-});
-
-// ── Google Sheets ────────────────────────────────────────────────
+// ── Sheets ───────────────────────────────────────────────────────
 function sendToSheet(data) {
   data.timestamp = new Date().toISOString();
   data.lastKnownBalance = state.balance;
@@ -332,13 +333,16 @@ function sheetSyncAll() {
 
 // ── State ────────────────────────────────────────────────────────
 let state = load();
-let formType = "expense", formMaaser = true; // FIX 1: default true
+let formType = "expense", formMaaser = true;
 let editId = null, editType = "expense", editMaaser = false;
 let pendingDeleteId = null;
+let pendingType = "expense";
+// Pending confirm state
+let cpId = null, cpMaaser = true;
 
 function load() {
   try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch {}
-  return { balance:0, transactions:[], maaserOwed:0, maaserEverPaid:false };
+  return { balance:0, transactions:[], maaserOwed:0, maaserEverPaid:false, pending:[] };
 }
 function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {} }
 function fmt(n) { return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n); }
@@ -351,6 +355,159 @@ function showToast(msg) {
   setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
+// ── Pending Queue ────────────────────────────────────────────────
+if (!state.pending) state.pending = [];
+
+function setPendingType(type) {
+  pendingType = type;
+  document.getElementById("pendingTypeIncome").className  = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("pendingTypeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+}
+
+function addToPending() {
+  const desc   = document.getElementById("pendingDesc").value.trim();
+  const amt    = parseFloat(document.getElementById("pendingAmount").value);
+  const source = document.getElementById("pendingSource").value;
+  if (isNaN(amt) || amt <= 0) { showToast("Please enter a valid amount"); return; }
+  const item = {
+    id: Date.now(),
+    type: pendingType,
+    desc: desc || (pendingType === "income" ? "Income" : "Expense"),
+    amount: amt,
+    source: source || "",
+    date: today()
+  };
+  state.pending.push(item);
+  save();
+  // Reset form
+  document.getElementById("pendingDesc").value   = "";
+  document.getElementById("pendingAmount").value = "";
+  document.getElementById("pendingSource").value = "";
+  setPendingType("expense");
+  hide("addPendingModal");
+  renderPending();
+  showToast("Added to pending queue");
+}
+
+function openConfirmPending(id) {
+  const item = state.pending.find(p => p.id === id);
+  if (!item) return;
+  cpId     = id;
+  cpMaaser = item.type === "income"; // default maaser on for income
+  document.getElementById("cpSource").textContent = item.source ? `From: ${item.source}` : "";
+  document.getElementById("cpDesc").textContent   = item.desc;
+  const amtEl = document.getElementById("cpAmt");
+  amtEl.textContent  = (item.type === "income" ? "+" : "−") + fmt(item.amount);
+  amtEl.style.color  = item.type === "income" ? "#16a34a" : "#dc2626";
+  // Show/hide maaser row based on type
+  const mr = document.getElementById("cpMaaserRow");
+  if (item.type === "income") { mr.style.display = "flex"; } else { mr.style.display = "none"; }
+  document.getElementById("cpMaaserCheck").className = "checkbox" + (cpMaaser ? " checked" : "");
+  document.getElementById("cpConfirmBtn").style.background = item.type === "income" ? "#16a34a" : "#dc2626";
+  show("confirmPendingModal");
+}
+
+function toggleCpMaaser() {
+  cpMaaser = !cpMaaser;
+  document.getElementById("cpMaaserCheck").className = "checkbox" + (cpMaaser ? " checked" : "");
+}
+
+function approvePending() {
+  const item = state.pending.find(p => p.id === cpId);
+  if (!item) return;
+  const delta     = item.type === "income" ? item.amount : -item.amount;
+  const maaserAmt = (item.type === "income" && cpMaaser) ? item.amount * 0.1 : 0;
+  const tx = {
+    id: Date.now(), type: item.type,
+    desc: item.desc + (item.source ? ` (${item.source})` : ""),
+    amount: item.amount, delta, date: item.date,
+    balance: state.balance + delta,
+    maaser: item.type === "income" && cpMaaser,
+    maaserAmt
+  };
+  state.transactions.unshift(tx);
+  state.balance    += delta;
+  state.maaserOwed += maaserAmt;
+  if (maaserAmt > 0) state.maaserEverPaid = false;
+  // Remove from pending
+  state.pending = state.pending.filter(p => p.id !== cpId);
+  sheetAdd(tx);
+  cpId = null;
+  hide("confirmPendingModal");
+  render();
+  showToast("Transaction added ✓");
+}
+
+function dismissPending() {
+  state.pending = state.pending.filter(p => p.id !== cpId);
+  cpId = null;
+  save();
+  hide("confirmPendingModal");
+  renderPending();
+  showToast("Dismissed");
+}
+
+function dismissAllPending() {
+  state.pending = [];
+  save();
+  renderPending();
+  showToast("All pending items dismissed");
+}
+
+function renderPending() {
+  const section = document.getElementById("pendingSection");
+  const list    = document.getElementById("pendingList");
+  const badge   = document.getElementById("pendingBadge");
+  if (!state.pending || state.pending.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+  badge.textContent = state.pending.length;
+  list.innerHTML = state.pending.map(item => `
+    <div class="pending-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-weight:600;font-size:14px">${item.desc}</div>
+          <div style="font-size:11px;color:#94a3b8">${item.date}${item.source ? " · " + item.source : ""}</div>
+        </div>
+        <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#16a34a":"#dc2626"}">
+          ${item.type==="income"?"+":"−"}${fmt(item.amount)}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="openConfirmPending(${item.id})" style="flex:1;padding:7px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">Review & Add</button>
+        <button onclick="quickApprovePending(${item.id}, true)" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ + Maaser</button>
+        <button onclick="quickApprovePending(${item.id}, false)" style="flex:1;padding:7px;background:#475569;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ No Maaser</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+// Quick approve without opening modal — for income items with/without maaser
+function quickApprovePending(id, withMaaser) {
+  const item = state.pending.find(p => p.id === id);
+  if (!item) return;
+  const useMaaser = item.type === "income" && withMaaser;
+  const delta     = item.type === "income" ? item.amount : -item.amount;
+  const maaserAmt = useMaaser ? item.amount * 0.1 : 0;
+  const tx = {
+    id: Date.now(), type: item.type,
+    desc: item.desc + (item.source ? ` (${item.source})` : ""),
+    amount: item.amount, delta, date: item.date,
+    balance: state.balance + delta,
+    maaser: useMaaser, maaserAmt
+  };
+  state.transactions.unshift(tx);
+  state.balance    += delta;
+  state.maaserOwed += maaserAmt;
+  if (maaserAmt > 0) state.maaserEverPaid = false;
+  state.pending = state.pending.filter(p => p.id !== id);
+  sheetAdd(tx);
+  render();
+  showToast("Transaction added ✓");
+}
+
 // ── Bulk Import ──────────────────────────────────────────────────
 function runBulkImport() {
   const rawData = document.getElementById("importBox").value;
@@ -358,9 +515,7 @@ function runBulkImport() {
   const lines = rawData.trim().split('\n');
   const baseTime = Date.now();
   let importedCount = 0;
-
   lines.forEach((line, index) => {
-    // FIX 2: description is optional — matches "+50", "-$12.50", "+200 Allowance" etc.
     const match = line.trim().match(/^([+-])\$?([\d.]+)(?:\s+(.+))?$/);
     if (match) {
       const isIncome    = match[1] === '+';
@@ -368,24 +523,17 @@ function runBulkImport() {
       const description = (match[3] || (isIncome ? 'Income' : 'Expense')).trim();
       const isMaaserPay = description.toLowerCase().includes('maser') || description.toLowerCase().includes('maaser');
       const delta       = isIncome ? amount : -amount;
-      const tx = {
-        id: baseTime + index, type: isIncome ? 'income' : 'expense',
-        desc: description, amount, delta, date: today(),
-        balance: state.balance + delta, maaser: false, maaserAmt: 0
-      };
+      const tx = { id:baseTime+index, type:isIncome?'income':'expense', desc:description, amount, delta, date:today(), balance:state.balance+delta, maaser:false, maaserAmt:0 };
       state.transactions.unshift(tx);
       state.balance += delta;
       if (!isIncome && isMaaserPay) state.maaserOwed = Math.max(0, state.maaserOwed - amount);
       importedCount++;
     }
   });
-
   if (importedCount > 0) {
-    recalcBalances();
-    render();
-    hide('importModal');
+    recalcBalances(); render(); hide('importModal');
     document.getElementById("importBox").value = "";
-    showToast(`Imported ${importedCount} transaction${importedCount > 1 ? 's' : ''}!`);
+    showToast(`Imported ${importedCount} transaction${importedCount>1?'s':''}!`);
   } else {
     alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
   }
@@ -404,14 +552,10 @@ function render() {
   const mo = state.maaserOwed;
   document.getElementById("maaserDisplay").textContent = fmt(mo);
   document.getElementById("maaserDisplay").style.color = mo > 0 ? "#b45309" : "#16a34a";
-  if (mo > 0) {
-    show("paidMaaserBtn"); hide("maaserPaidBadge");
-  } else if (state.maaserEverPaid) {
-    hide("paidMaaserBtn"); show("maaserPaidBadge");
-    document.getElementById("maaserPaidBadge").style.display = "flex";
-  } else {
-    hide("paidMaaserBtn"); hide("maaserPaidBadge");
-  }
+  if (mo > 0) { show("paidMaaserBtn"); hide("maaserPaidBadge"); }
+  else if (state.maaserEverPaid) { hide("paidMaaserBtn"); show("maaserPaidBadge"); document.getElementById("maaserPaidBadge").style.display="flex"; }
+  else { hide("paidMaaserBtn"); hide("maaserPaidBadge"); }
+  renderPending();
   renderTxList();
   save();
 }
@@ -421,12 +565,9 @@ function renderTxList() {
   const filtered = state.transactions.filter(t => t.desc.toLowerCase().includes(search) || t.date.includes(search));
   const list  = document.getElementById("txList");
   const empty = document.getElementById("emptyState");
-  if (state.transactions.length === 0) {
-    show("emptyState"); empty.textContent = "No transactions yet. Add your first one above!";
-    list.innerHTML = ""; document.getElementById("searchInput").style.display = "none"; return;
-  }
+  if (state.transactions.length === 0) { show("emptyState"); empty.textContent="No transactions yet. Add your first one above!"; list.innerHTML=""; document.getElementById("searchInput").style.display="none"; return; }
   document.getElementById("searchInput").style.display = "block";
-  if (filtered.length === 0) { show("emptyState"); empty.textContent = "No results found."; list.innerHTML = ""; return; }
+  if (filtered.length === 0) { show("emptyState"); empty.textContent="No results found."; list.innerHTML=""; return; }
   hide("emptyState");
   list.innerHTML = filtered.map(tx => `
     <div class="card">
@@ -449,12 +590,11 @@ function renderTxList() {
 
 // ── Delete ───────────────────────────────────────────────────────
 function openDeleteModal(id) {
-  const tx = state.transactions.find(t=>t.id===id);
-  if (!tx) return;
+  const tx = state.transactions.find(t=>t.id===id); if (!tx) return;
   pendingDeleteId = id;
   document.getElementById("deleteModalDesc").textContent = tx.desc;
   document.getElementById("deleteModalAmt").textContent  = (tx.type==="income"?"+":"−")+fmt(tx.amount);
-  document.getElementById("deleteModalAmt").style.color  = tx.type==="income" ? "#16a34a" : "#dc2626";
+  document.getElementById("deleteModalAmt").style.color  = tx.type==="income"?"#16a34a":"#dc2626";
   show("deleteModal");
 }
 function confirmDelete() {
@@ -463,164 +603,120 @@ function confirmDelete() {
   const tx = state.transactions[idx];
   state.transactions.splice(idx,1);
   state.balance -= tx.delta;
-  sheetDelete(id);
-  recalcBalances();
+  sheetDelete(id); recalcBalances();
   state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  pendingDeleteId = null;
-  hide("deleteModal");
-  render();
+  pendingDeleteId = null; hide("deleteModal"); render();
   showToast("Transaction deleted");
 }
 
 // ── Form ─────────────────────────────────────────────────────────
 function openForm(type) {
-  formType = type;
-  formMaaser = (type === "income"); // FIX 1: default ON for income
-  document.getElementById("formDesc").value   = "";
-  document.getElementById("formAmount").value = "";
-  document.getElementById("formDate").value   = today();
+  formType = type; formMaaser = (type==="income");
+  document.getElementById("formDesc").value=""; document.getElementById("formAmount").value=""; document.getElementById("formDate").value=today();
   document.getElementById("formTitle").textContent    = type==="income"?"➕ Add Income":"➖ Add Expense";
   document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  // FIX 1: checkbox reflects the default
-  document.getElementById("formMaaserCheck").className = "checkbox" + (formMaaser ? " checked" : "");
+  document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
   show("txForm");
 }
 function setFormType(type) {
-  formType = type;
-  formMaaser = (type === "income"); // FIX 1: reset to default when switching type
+  formType=type; formMaaser=(type==="income");
   document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("formMaaserCheck").className = "checkbox" + (formMaaser ? " checked" : "");
-}
-function toggleFormMaaser() {
-  formMaaser = !formMaaser;
   document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
 }
+function toggleFormMaaser() {
+  formMaaser=!formMaaser;
+  document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");
+}
 function saveTx() {
-  const desc = document.getElementById("formDesc").value.trim();
-  const amt  = parseFloat(document.getElementById("formAmount").value);
-  const date = document.getElementById("formDate").value;
-  if (!desc || isNaN(amt) || amt<=0) return;
-  const delta     = formType==="income" ? amt : -amt;
-  const maaserAmt = (formType==="income" && formMaaser) ? amt*0.1 : 0;
-  const tx = { id:Date.now(), type:formType, desc, amount:amt, delta, date, balance:state.balance+delta, maaser:formType==="income"&&formMaaser, maaserAmt };
-  state.transactions.unshift(tx);
-  state.balance    += delta;
-  state.maaserOwed += maaserAmt;
-  if (maaserAmt > 0) state.maaserEverPaid = false;
-  sheetAdd(tx);
-  showToast("Saved ✓");
-  hide("txForm");
-  render();
+  const desc=document.getElementById("formDesc").value.trim();
+  const amt=parseFloat(document.getElementById("formAmount").value);
+  const date=document.getElementById("formDate").value;
+  if (!desc||isNaN(amt)||amt<=0) return;
+  const delta=formType==="income"?amt:-amt;
+  const maaserAmt=(formType==="income"&&formMaaser)?amt*0.1:0;
+  const tx={id:Date.now(),type:formType,desc,amount:amt,delta,date,balance:state.balance+delta,maaser:formType==="income"&&formMaaser,maaserAmt};
+  state.transactions.unshift(tx); state.balance+=delta; state.maaserOwed+=maaserAmt;
+  if (maaserAmt>0) state.maaserEverPaid=false;
+  sheetAdd(tx); showToast("Saved ✓"); hide("txForm"); render();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
 function recalcBalances() {
   if (!state.transactions.length) return;
-  const txs = [...state.transactions].reverse();
-  let s = state.balance;
-  for (const t of txs) s -= t.delta;
-  let running = s;
-  for (let i = txs.length-1; i>=0; i--) { running += txs[i].delta; txs[i].balance = running; }
-  state.transactions = [...txs].reverse();
+  const txs=[...state.transactions].reverse();
+  let s=state.balance; for (const t of txs) s-=t.delta;
+  let running=s;
+  for (let i=txs.length-1;i>=0;i--) { running+=txs[i].delta; txs[i].balance=running; }
+  state.transactions=[...txs].reverse();
 }
 function toggleMaaser(id) {
-  const tx = state.transactions.find(t=>t.id===id);
-  if (!tx || tx.type!=="income") return;
-  tx.maaser    = !tx.maaser;
-  tx.maaserAmt = tx.maaser ? tx.amount*0.1 : 0;
-  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  if (state.maaserOwed > 0) state.maaserEverPaid = false;
+  const tx=state.transactions.find(t=>t.id===id); if (!tx||tx.type!=="income") return;
+  tx.maaser=!tx.maaser; tx.maaserAmt=tx.maaser?tx.amount*0.1:0;
+  state.maaserOwed=state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  if (state.maaserOwed>0) state.maaserEverPaid=false;
   render();
 }
-function confirmMaaser() {
-  document.getElementById("maaserConfirmAmt").textContent = fmt(state.maaserOwed);
-  show("maaserConfirm");
-}
+function confirmMaaser() { document.getElementById("maaserConfirmAmt").textContent=fmt(state.maaserOwed); show("maaserConfirm"); }
 function clearMaaser() {
-  const amt = state.maaserOwed;
-  const tx  = { id:Date.now(), type:"expense", desc:"🕍 Maaser Payment", amount:amt, delta:-amt, date:today(), balance:state.balance-amt, maaser:false, maaserAmt:0 };
-  state.transactions.unshift(tx);
-  state.balance -= amt;
-  state.transactions   = state.transactions.map(t=>({...t, maaser:false, maaserAmt:0}));
-  state.maaserOwed     = 0;
-  state.maaserEverPaid = true;
-  sheetAdd(tx);
-  hide("maaserConfirm");
-  render();
+  const amt=state.maaserOwed;
+  const tx={id:Date.now(),type:"expense",desc:"🕍 Maaser Payment",amount:amt,delta:-amt,date:today(),balance:state.balance-amt,maaser:false,maaserAmt:0};
+  state.transactions.unshift(tx); state.balance-=amt;
+  state.transactions=state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));
+  state.maaserOwed=0; state.maaserEverPaid=true;
+  sheetAdd(tx); hide("maaserConfirm"); render();
 }
 function setStartBalance() {
-  const val = parseFloat(document.getElementById("newBalanceInput").value);
-  if (isNaN(val)) return;
-  const txs = [...state.transactions].reverse();
-  let running = val;
-  for (let i=0; i<txs.length; i++) { running += txs[i].delta; txs[i].balance = running; }
-  state.transactions = txs.reverse();
-  state.balance = state.transactions.length > 0 ? state.transactions[0].balance : val;
-  hide("setBalancePanel");
-  render();
+  const val=parseFloat(document.getElementById("newBalanceInput").value); if (isNaN(val)) return;
+  const txs=[...state.transactions].reverse(); let running=val;
+  for (let i=0;i<txs.length;i++) { running+=txs[i].delta; txs[i].balance=running; }
+  state.transactions=txs.reverse();
+  state.balance=state.transactions.length>0?state.transactions[0].balance:val;
+  hide("setBalancePanel"); render();
 }
 function openEdit(id) {
-  const tx = state.transactions.find(t=>t.id===id); if (!tx) return;
-  editId = id; editType = tx.type; editMaaser = tx.maaser || false;
-  document.getElementById("editDesc").value   = tx.desc;
-  document.getElementById("editAmount").value = tx.amount;
-  document.getElementById("editDate").value   = tx.date;
-  document.getElementById("editTypeIncome").className  = "type-btn income"+(tx.type==="income"?" active":"");
-  document.getElementById("editTypeExpense").className = "type-btn expense"+(tx.type==="expense"?" active":"");
-  const mr = document.getElementById("editMaaserRow");
+  const tx=state.transactions.find(t=>t.id===id); if (!tx) return;
+  editId=id; editType=tx.type; editMaaser=tx.maaser||false;
+  document.getElementById("editDesc").value=tx.desc; document.getElementById("editAmount").value=tx.amount; document.getElementById("editDate").value=tx.date;
+  document.getElementById("editTypeIncome").className="type-btn income"+(tx.type==="income"?" active":"");
+  document.getElementById("editTypeExpense").className="type-btn expense"+(tx.type==="expense"?" active":"");
+  const mr=document.getElementById("editMaaserRow");
   if (tx.type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("editMaaserCheck").className = "checkbox"+(editMaaser?" checked":"");
+  document.getElementById("editMaaserCheck").className="checkbox"+(editMaaser?" checked":"");
   show("editModal");
 }
 function setEditType(type) {
-  editType = type; editMaaser = false;
-  document.getElementById("editTypeIncome").className  = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("editTypeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
-  const mr = document.getElementById("editMaaserRow");
+  editType=type; editMaaser=false;
+  document.getElementById("editTypeIncome").className="type-btn income"+(type==="income"?" active":"");
+  document.getElementById("editTypeExpense").className="type-btn expense"+(type==="expense"?" active":"");
+  const mr=document.getElementById("editMaaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("editMaaserCheck").className = "checkbox";
+  document.getElementById("editMaaserCheck").className="checkbox";
 }
-function toggleEditMaaser() {
-  editMaaser = !editMaaser;
-  document.getElementById("editMaaserCheck").className = "checkbox"+(editMaaser?" checked":"");
-}
+function toggleEditMaaser() { editMaaser=!editMaaser; document.getElementById("editMaaserCheck").className="checkbox"+(editMaaser?" checked":""); }
 function saveEdit() {
-  const desc = document.getElementById("editDesc").value.trim();
-  const amt  = parseFloat(document.getElementById("editAmount").value);
-  const date = document.getElementById("editDate").value;
-  if (!desc || isNaN(amt) || amt<=0) return;
-  const tx = state.transactions.find(t=>t.id===editId); if (!tx) return;
-  const oldDelta = tx.delta;
-  const newDelta = editType==="income" ? amt : -amt;
-  tx.type = editType; tx.desc = desc; tx.amount = amt; tx.delta = newDelta; tx.date = date;
-  tx.maaser = editType==="income" && editMaaser;
-  tx.maaserAmt = tx.maaser ? amt*0.1 : 0;
-  state.balance += (newDelta - oldDelta);
-  recalcBalances();
-  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  sheetEdit(tx);
-  showToast("Updated ✓");
-  hide("editModal");
-  render();
+  const desc=document.getElementById("editDesc").value.trim();
+  const amt=parseFloat(document.getElementById("editAmount").value);
+  const date=document.getElementById("editDate").value;
+  if (!desc||isNaN(amt)||amt<=0) return;
+  const tx=state.transactions.find(t=>t.id===editId); if (!tx) return;
+  const oldDelta=tx.delta; const newDelta=editType==="income"?amt:-amt;
+  tx.type=editType; tx.desc=desc; tx.amount=amt; tx.delta=newDelta; tx.date=date;
+  tx.maaser=editType==="income"&&editMaaser; tx.maaserAmt=tx.maaser?amt*0.1:0;
+  state.balance+=(newDelta-oldDelta); recalcBalances();
+  state.maaserOwed=state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  sheetEdit(tx); showToast("Updated ✓"); hide("editModal"); render();
 }
 
 // ── Init ─────────────────────────────────────────────────────────
 document.getElementById("formDate").value = today();
 render();
-
-// Check lock on load
-if (shouldLock()) {
-  lock();
-} else {
-  stampActivity();
-}
-
+if (shouldLock()) lock(); else stampActivity();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
