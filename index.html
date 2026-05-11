@@ -13,7 +13,7 @@
     body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; }
     #root { max-width: 520px; margin: 0 auto; }
     button { cursor: pointer; font-family: inherit; }
-    input { font-family: inherit; }
+    input, textarea { font-family: inherit; }
     .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
     .modal { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; }
@@ -31,9 +31,29 @@
     .small-check.checked { border-color: #b45309; background: #b45309; }
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; }
+
+    /* Lock screen */
+    #lockScreen { position: fixed; inset: 0; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
+    #lockScreen .lock-icon { font-size: 56px; }
+    #lockScreen .lock-title { color: #fff; font-size: 20px; font-weight: 700; }
+    #lockScreen .lock-sub { color: #94a3b8; font-size: 14px; text-align: center; padding: 0 32px; }
+    #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+    #lockScreen .fp-btn:active { background: #475569; }
+    #lockScreen .fp-error { color: #f87171; font-size: 13px; margin-top: 4px; min-height: 20px; }
   </style>
 </head>
 <body>
+
+<!-- Lock Screen -->
+<div id="lockScreen" class="hidden">
+  <div class="lock-icon">💳</div>
+  <div class="lock-title">Virtual Bank Account</div>
+  <div class="lock-sub">App locked after 30 minutes of inactivity</div>
+  <button class="fp-btn" onclick="triggerBiometric()" title="Unlock with fingerprint">👆</button>
+  <div class="lock-sub" style="margin-top:-8px">Tap to unlock</div>
+  <div class="fp-error" id="fpError"></div>
+</div>
+
 <div id="root">
   <div style="text-align:center;font-weight:700;font-size:18px;color:#1e293b;margin-bottom:12px">💳 Virtual Bank Account</div>
 
@@ -107,8 +127,9 @@
       <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
       <input id="formDate" class="input" type="date" style="flex:1" />
     </div>
+    <!-- FIX 1: Maaser checkbox starts checked by default for income -->
     <div id="maaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleFormMaaser()">
-      <div id="formMaaserCheck" class="checkbox"></div>
+      <div id="formMaaserCheck" class="checkbox checked"></div>
       <span id="maaserLabel" style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
     </div>
     <div class="row" style="margin-bottom:0">
@@ -127,8 +148,14 @@
 <div id="importModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">⬆ Bulk Import</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:12px">One transaction per line.<br>Format: <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50 Description</code> or <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-$4.50 Lunch</code></div>
-    <textarea id="importBox" class="input" style="height:140px;font-family:monospace;font-size:13px;margin-bottom:12px" placeholder="+$200 Allowance&#10;-$12.50 Groceries&#10;-5 Bus fare"></textarea>
+    <!-- FIX 2: Description is now optional, amount alone is valid -->
+    <div style="font-size:12px;color:#64748b;margin-bottom:12px">
+      One transaction per line.<br>
+      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code> &nbsp;or&nbsp;
+      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+$50 Allowance</code> &nbsp;or&nbsp;
+      <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-12.50 Groceries</code>
+    </div>
+    <textarea id="importBox" class="input" style="height:140px;font-family:monospace;font-size:13px;margin-bottom:12px" placeholder="+200&#10;-$12.50 Groceries&#10;-5"></textarea>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="runBulkImport()">Import Transactions</button>
       <button class="btn btn-light" onclick="hide('importModal')">Cancel</button>
@@ -177,10 +204,118 @@
 <div id="toast" class="hidden"></div>
 
 <script>
-const STORAGE_KEY = "vba_v3";
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
+const STORAGE_KEY  = "vba_v3";
+const LOCK_KEY     = "vba_last_active";
+const LOCK_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec";
 
-// --- Google Sheets ---
+// ── Biometric / Lock ─────────────────────────────────────────────
+const isPWA = window.matchMedia('(display-mode: standalone)').matches
+           || window.navigator.standalone === true;
+
+let bioCredentialId = localStorage.getItem("vba_cred_id") || null;
+
+function stampActivity() {
+  localStorage.setItem(LOCK_KEY, Date.now().toString());
+}
+
+function shouldLock() {
+  if (!isPWA) return false; // only lock in installed PWA, not browser tab
+  const last = parseInt(localStorage.getItem(LOCK_KEY) || "0");
+  return Date.now() - last > LOCK_TIMEOUT;
+}
+
+async function registerBiometric() {
+  // Called once on first unlock attempt — registers a platform authenticator
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: "VBA" },
+        user: { id: new Uint8Array(16), name: "user", displayName: "VBA User" },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform", // device biometric only
+          userVerification: "required"
+        },
+        timeout: 60000
+      }
+    });
+    // Store credential id as base64 for future assertions
+    const idB64 = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+    localStorage.setItem("vba_cred_id", idB64);
+    bioCredentialId = idB64;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function assertBiometric() {
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const opts = {
+      publicKey: {
+        challenge,
+        userVerification: "required",
+        timeout: 60000
+      }
+    };
+    // If we have a stored credential, narrow to it
+    if (bioCredentialId) {
+      const idBytes = Uint8Array.from(atob(bioCredentialId), c => c.charCodeAt(0));
+      opts.publicKey.allowCredentials = [{ type: "public-key", id: idBytes }];
+    }
+    await navigator.credentials.get(opts);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function triggerBiometric() {
+  document.getElementById("fpError").textContent = "";
+  const supported = window.PublicKeyCredential !== undefined;
+  if (!supported) {
+    // Fallback: no biometric support — just unlock
+    unlock();
+    return;
+  }
+  // Register on first use
+  if (!bioCredentialId) {
+    const ok = await registerBiometric();
+    if (!ok) {
+      document.getElementById("fpError").textContent = "Biometric setup failed. Try again.";
+      return;
+    }
+  }
+  const ok = await assertBiometric();
+  if (ok) {
+    unlock();
+  } else {
+    document.getElementById("fpError").textContent = "Fingerprint not recognised. Try again.";
+  }
+}
+
+function lock() {
+  show("lockScreen");
+}
+
+function unlock() {
+  hide("lockScreen");
+  stampActivity();
+}
+
+// Stamp activity on any interaction
+document.addEventListener("pointerdown", stampActivity);
+
+// Check lock on visibility change (returning to app)
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && shouldLock()) lock();
+});
+
+// ── Google Sheets ────────────────────────────────────────────────
 function sendToSheet(data) {
   data.timestamp = new Date().toISOString();
   data.lastKnownBalance = state.balance;
@@ -195,9 +330,9 @@ function sheetSyncAll() {
   setTimeout(() => showToast("Cloud Sync Complete! ☁️"), 1500);
 }
 
-// --- State ---
+// ── State ────────────────────────────────────────────────────────
 let state = load();
-let formType = "expense", formMaaser = false;
+let formType = "expense", formMaaser = true; // FIX 1: default true
 let editId = null, editType = "expense", editMaaser = false;
 let pendingDeleteId = null;
 
@@ -216,7 +351,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
-// --- Bulk Import ---
+// ── Bulk Import ──────────────────────────────────────────────────
 function runBulkImport() {
   const rawData = document.getElementById("importBox").value;
   if (!rawData.trim()) return;
@@ -225,13 +360,14 @@ function runBulkImport() {
   let importedCount = 0;
 
   lines.forEach((line, index) => {
-    const match = line.trim().match(/^([+-])\$?([\d.]+)\s+(.+)$/);
+    // FIX 2: description is optional — matches "+50", "-$12.50", "+200 Allowance" etc.
+    const match = line.trim().match(/^([+-])\$?([\d.]+)(?:\s+(.+))?$/);
     if (match) {
-      const isIncome = match[1] === '+';
-      const amount = parseFloat(match[2]);
-      const description = match[3].trim();
+      const isIncome    = match[1] === '+';
+      const amount      = parseFloat(match[2]);
+      const description = (match[3] || (isIncome ? 'Income' : 'Expense')).trim();
       const isMaaserPay = description.toLowerCase().includes('maser') || description.toLowerCase().includes('maaser');
-      const delta = isIncome ? amount : -amount;
+      const delta       = isIncome ? amount : -amount;
       const tx = {
         id: baseTime + index, type: isIncome ? 'income' : 'expense',
         desc: description, amount, delta, date: today(),
@@ -251,11 +387,11 @@ function runBulkImport() {
     document.getElementById("importBox").value = "";
     showToast(`Imported ${importedCount} transaction${importedCount > 1 ? 's' : ''}!`);
   } else {
-    alert('No valid transactions found.\nFormat: +50 Description or -$4.50 Lunch');
+    alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
   }
 }
 
-// --- Render ---
+// ── Render ───────────────────────────────────────────────────────
 function render() {
   const bal = state.balance;
   const balEl = document.getElementById("balanceDisplay");
@@ -311,22 +447,19 @@ function renderTxList() {
     </div>`).join("");
 }
 
-// --- Delete with confirm ---
+// ── Delete ───────────────────────────────────────────────────────
 function openDeleteModal(id) {
   const tx = state.transactions.find(t=>t.id===id);
   if (!tx) return;
   pendingDeleteId = id;
   document.getElementById("deleteModalDesc").textContent = tx.desc;
-  document.getElementById("deleteModalAmt").textContent = (tx.type==="income"?"+":"−") + fmt(tx.amount);
-  document.getElementById("deleteModalAmt").style.color = tx.type==="income" ? "#16a34a" : "#dc2626";
+  document.getElementById("deleteModalAmt").textContent  = (tx.type==="income"?"+":"−")+fmt(tx.amount);
+  document.getElementById("deleteModalAmt").style.color  = tx.type==="income" ? "#16a34a" : "#dc2626";
   show("deleteModal");
 }
-
 function confirmDelete() {
-  const id = pendingDeleteId;
-  if (!id) return;
-  const idx = state.transactions.findIndex(t=>t.id===id);
-  if (idx===-1) return;
+  const id = pendingDeleteId; if (!id) return;
+  const idx = state.transactions.findIndex(t=>t.id===id); if (idx===-1) return;
   const tx = state.transactions[idx];
   state.transactions.splice(idx,1);
   state.balance -= tx.delta;
@@ -339,27 +472,30 @@ function confirmDelete() {
   showToast("Transaction deleted");
 }
 
-// --- Form ---
+// ── Form ─────────────────────────────────────────────────────────
 function openForm(type) {
-  formType = type; formMaaser = false;
-  document.getElementById("formDesc").value = "";
+  formType = type;
+  formMaaser = (type === "income"); // FIX 1: default ON for income
+  document.getElementById("formDesc").value   = "";
   document.getElementById("formAmount").value = "";
-  document.getElementById("formDate").value = today();
-  document.getElementById("formTitle").textContent = type==="income"?"➕ Add Income":"➖ Add Expense";
-  document.getElementById("typeIncome").className  = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  document.getElementById("formDate").value   = today();
+  document.getElementById("formTitle").textContent    = type==="income"?"➕ Add Income":"➖ Add Expense";
+  document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("formMaaserCheck").className = "checkbox";
+  // FIX 1: checkbox reflects the default
+  document.getElementById("formMaaserCheck").className = "checkbox" + (formMaaser ? " checked" : "");
   show("txForm");
 }
 function setFormType(type) {
-  formType = type; formMaaser = false;
-  document.getElementById("typeIncome").className  = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("typeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  formType = type;
+  formMaaser = (type === "income"); // FIX 1: reset to default when switching type
+  document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
   const mr = document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("formMaaserCheck").className = "checkbox";
+  document.getElementById("formMaaserCheck").className = "checkbox" + (formMaaser ? " checked" : "");
 }
 function toggleFormMaaser() {
   formMaaser = !formMaaser;
@@ -383,7 +519,7 @@ function saveTx() {
   render();
 }
 
-// --- Helpers ---
+// ── Helpers ──────────────────────────────────────────────────────
 function recalcBalances() {
   if (!state.transactions.length) return;
   const txs = [...state.transactions].reverse();
@@ -430,8 +566,7 @@ function setStartBalance() {
   render();
 }
 function openEdit(id) {
-  const tx = state.transactions.find(t=>t.id===id);
-  if (!tx) return;
+  const tx = state.transactions.find(t=>t.id===id); if (!tx) return;
   editId = id; editType = tx.type; editMaaser = tx.maaser || false;
   document.getElementById("editDesc").value   = tx.desc;
   document.getElementById("editAmount").value = tx.amount;
@@ -460,8 +595,7 @@ function saveEdit() {
   const amt  = parseFloat(document.getElementById("editAmount").value);
   const date = document.getElementById("editDate").value;
   if (!desc || isNaN(amt) || amt<=0) return;
-  const tx = state.transactions.find(t=>t.id===editId);
-  if (!tx) return;
+  const tx = state.transactions.find(t=>t.id===editId); if (!tx) return;
   const oldDelta = tx.delta;
   const newDelta = editType==="income" ? amt : -amt;
   tx.type = editType; tx.desc = desc; tx.amount = amt; tx.delta = newDelta; tx.date = date;
@@ -476,8 +610,17 @@ function saveEdit() {
   render();
 }
 
+// ── Init ─────────────────────────────────────────────────────────
 document.getElementById("formDate").value = today();
 render();
+
+// Check lock on load
+if (shouldLock()) {
+  lock();
+} else {
+  stampActivity();
+}
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
