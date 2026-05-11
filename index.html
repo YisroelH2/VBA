@@ -33,23 +33,33 @@
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; }
     #lockScreen { position: fixed; inset: 0; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
-    #lockScreen .lock-icon { font-size: 56px; }
-    #lockScreen .lock-title { color: #fff; font-size: 20px; font-weight: 700; }
-    #lockScreen .lock-sub { color: #94a3b8; font-size: 14px; text-align: center; padding: 0 32px; }
     #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
     #lockScreen .fp-error { color: #f87171; font-size: 13px; margin-top: 4px; min-height: 20px; }
     .badge { display: inline-flex; align-items: center; justify-content: center; background: #dc2626; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
+
+    /* Autocomplete */
+    .ac-wrap { position: relative; margin-bottom: 8px; }
+    .ac-wrap .input { margin-bottom: 0; }
+    .ac-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; z-index: 200; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .ac-item { padding: 10px 12px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f1f5f9; }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: #f1f5f9; }
+    .ac-item .ac-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ac-item .ac-meta { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+    .ac-item .ac-type { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+    .ac-type.income { background: #dcfce7; color: #16a34a; }
+    .ac-type.expense { background: #fee2e2; color: #dc2626; }
   </style>
 </head>
 <body>
 
 <!-- Lock Screen -->
 <div id="lockScreen" class="hidden">
-  <div class="lock-icon">💳</div>
-  <div class="lock-title">Virtual Bank Account</div>
-  <div class="lock-sub">App locked after 30 minutes of inactivity</div>
+  <div style="font-size:56px">💳</div>
+  <div style="color:#fff;font-size:20px;font-weight:700">Virtual Bank Account</div>
+  <div style="color:#94a3b8;font-size:14px;text-align:center;padding:0 32px">App locked after 30 minutes of inactivity</div>
   <button class="fp-btn" onclick="triggerBiometric()">👆</button>
-  <div class="lock-sub" style="margin-top:-8px">Tap to unlock</div>
+  <div style="color:#94a3b8;font-size:14px;margin-top:-8px">Tap to unlock</div>
   <div class="fp-error" id="fpError"></div>
 </div>
 
@@ -89,18 +99,16 @@
     </div>
   </div>
 
-  <!-- Pending Queue Section -->
+  <!-- Pending Queue -->
   <div id="pendingSection" class="hidden" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-weight:700;font-size:14px;color:#92400e">
-        ⏳ Pending Review <span id="pendingBadge" class="badge"></span>
-      </div>
+      <div style="font-weight:700;font-size:14px;color:#92400e">⏳ Pending Review <span id="pendingBadge" class="badge"></span></div>
       <button onclick="dismissAllPending()" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
     </div>
     <div id="pendingList"></div>
   </div>
 
-  <!-- Subtle links row -->
+  <!-- Subtle links -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:-4px">
     <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
     <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import</button>
@@ -133,7 +141,15 @@
       <button id="typeIncome" class="type-btn income" onclick="setFormType('income')">Income</button>
       <button id="typeExpense" class="type-btn expense active" onclick="setFormType('expense')">Expense</button>
     </div>
-    <input id="formDesc" class="input" placeholder="Description" style="margin-bottom:8px" />
+    <!-- Autocomplete desc -->
+    <div class="ac-wrap" id="formDescWrap">
+      <input id="formDesc" class="input" placeholder="Description" autocomplete="off"
+        oninput="acInput('formDesc','formAcDrop','form')"
+        onkeydown="acKeydown(event,'formAcDrop','formDesc')"
+        onfocus="acInput('formDesc','formAcDrop','form')"
+      />
+      <div id="formAcDrop" class="ac-dropdown hidden"></div>
+    </div>
     <div class="row">
       <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
       <input id="formDate" class="input" type="date" style="flex:1" />
@@ -144,7 +160,7 @@
     </div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveTx()">Save</button>
-      <button class="btn btn-light" onclick="hide('txForm')">Cancel</button>
+      <button class="btn btn-light" onclick="closeForm()">Cancel</button>
     </div>
   </div>
 
@@ -154,7 +170,7 @@
   <div id="txList"></div>
 </div>
 
-<!-- Add to Pending Modal -->
+<!-- Add Pending Modal -->
 <div id="addPendingModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:14px">⏳ Add to Pending Queue</div>
@@ -162,17 +178,20 @@
       <button id="pendingTypeExpense" class="type-btn expense active" onclick="setPendingType('expense')">Expense</button>
       <button id="pendingTypeIncome" class="type-btn income" onclick="setPendingType('income')">Income</button>
     </div>
-    <input id="pendingDesc" class="input" placeholder="Description (e.g. Amazon charge)" style="margin-bottom:8px" />
+    <div class="ac-wrap">
+      <input id="pendingDesc" class="input" placeholder="Description (optional)" autocomplete="off"
+        oninput="acInput('pendingDesc','pendingAcDrop','pending')"
+        onkeydown="acKeydown(event,'pendingAcDrop','pendingDesc')"
+        onfocus="acInput('pendingDesc','pendingAcDrop','pending')"
+      />
+      <div id="pendingAcDrop" class="ac-dropdown hidden"></div>
+    </div>
     <div class="row">
       <input id="pendingAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
       <select id="pendingSource" class="input" style="flex:1">
         <option value="">Source (optional)</option>
-        <option>Capital One</option>
-        <option>Amex</option>
-        <option>CashApp</option>
-        <option>TD Bank</option>
-        <option>PayPal</option>
-        <option>Other</option>
+        <option>Capital One</option><option>Amex</option><option>CashApp</option>
+        <option>TD Bank</option><option>PayPal</option><option>Other</option>
       </select>
     </div>
     <div class="row" style="margin-bottom:0">
@@ -190,7 +209,6 @@
     <div id="cpDesc" style="font-size:15px;font-weight:600;margin-bottom:4px"></div>
     <div id="cpAmt" style="font-size:28px;font-weight:700;margin-bottom:16px"></div>
     <div style="font-size:13px;color:#475569;margin-bottom:8px;font-weight:600">Add to transactions as:</div>
-    <!-- Maaser toggle inside confirm -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer" id="cpMaaserRow" onclick="toggleCpMaaser()">
       <div id="cpMaaserCheck" class="checkbox checked"></div>
       <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
@@ -208,7 +226,7 @@
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">⬆ Bulk Import</div>
     <div style="font-size:12px;color:#64748b;margin-bottom:12px">
-      One per line. <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code> &nbsp;
+      One per line. &nbsp;<code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code>&nbsp;
       <code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-$12.50 Groceries</code>
     </div>
     <textarea id="importBox" class="input" style="height:140px;font-family:monospace;font-size:13px;margin-bottom:12px" placeholder="+200&#10;-$12.50 Groceries&#10;-5"></textarea>
@@ -219,7 +237,7 @@
   </div>
 </div>
 
-<!-- Delete Confirm Modal -->
+<!-- Delete Modal -->
 <div id="deleteModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:8px">🗑 Delete Transaction?</div>
@@ -241,7 +259,14 @@
       <button id="editTypeIncome" class="type-btn income" onclick="setEditType('income')">Income</button>
       <button id="editTypeExpense" class="type-btn expense active" onclick="setEditType('expense')">Expense</button>
     </div>
-    <input id="editDesc" class="input" placeholder="Description" style="margin-bottom:8px" />
+    <div class="ac-wrap">
+      <input id="editDesc" class="input" placeholder="Description" autocomplete="off"
+        oninput="acInput('editDesc','editAcDrop','edit')"
+        onkeydown="acKeydown(event,'editAcDrop','editDesc')"
+        onfocus="acInput('editDesc','editAcDrop','edit')"
+      />
+      <div id="editAcDrop" class="ac-dropdown hidden"></div>
+    </div>
     <div class="row">
       <input id="editAmount" class="input" type="number" placeholder="Amount" style="flex:1" />
       <input id="editDate" class="input" type="date" style="flex:1" />
@@ -252,7 +277,7 @@
     </div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveEdit()">Save</button>
-      <button class="btn btn-light" onclick="hide('editModal')">Cancel</button>
+      <button class="btn btn-light" onclick="closeEditModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -268,48 +293,27 @@ const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu
 // ── Biometric ────────────────────────────────────────────────────
 const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 let bioCredentialId = localStorage.getItem("vba_cred_id") || null;
-
 function stampActivity() { localStorage.setItem(LOCK_KEY, Date.now().toString()); }
-function shouldLock() {
-  if (!isPWA) return false;
-  return Date.now() - parseInt(localStorage.getItem(LOCK_KEY) || "0") > LOCK_TIMEOUT;
-}
+function shouldLock() { if (!isPWA) return false; return Date.now() - parseInt(localStorage.getItem(LOCK_KEY)||"0") > LOCK_TIMEOUT; }
 async function registerBiometric() {
   try {
-    const cred = await navigator.credentials.create({ publicKey: {
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: "VBA" },
-      user: { id: new Uint8Array(16), name: "user", displayName: "VBA User" },
-      pubKeyCredParams: [{ type:"public-key", alg:-7 }, { type:"public-key", alg:-257 }],
-      authenticatorSelection: { authenticatorAttachment:"platform", userVerification:"required" },
-      timeout: 60000
-    }});
+    const cred = await navigator.credentials.create({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rp:{name:"VBA"}, user:{id:new Uint8Array(16),name:"user",displayName:"VBA User"}, pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}], authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"}, timeout:60000 }});
     const idB64 = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
-    localStorage.setItem("vba_cred_id", idB64);
-    bioCredentialId = idB64;
-    return true;
+    localStorage.setItem("vba_cred_id", idB64); bioCredentialId = idB64; return true;
   } catch { return false; }
 }
 async function assertBiometric() {
   try {
-    const opts = { publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), userVerification:"required", timeout:60000 }};
-    if (bioCredentialId) {
-      const idBytes = Uint8Array.from(atob(bioCredentialId), c => c.charCodeAt(0));
-      opts.publicKey.allowCredentials = [{ type:"public-key", id:idBytes }];
-    }
-    await navigator.credentials.get(opts);
-    return true;
+    const opts = { publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),userVerification:"required",timeout:60000}};
+    if (bioCredentialId) { const idBytes=Uint8Array.from(atob(bioCredentialId),c=>c.charCodeAt(0)); opts.publicKey.allowCredentials=[{type:"public-key",id:idBytes}]; }
+    await navigator.credentials.get(opts); return true;
   } catch { return false; }
 }
 async function triggerBiometric() {
   document.getElementById("fpError").textContent = "";
   if (!window.PublicKeyCredential) { unlock(); return; }
-  if (!bioCredentialId) {
-    const ok = await registerBiometric();
-    if (!ok) { document.getElementById("fpError").textContent = "Biometric setup failed. Try again."; return; }
-  }
-  const ok = await assertBiometric();
-  ok ? unlock() : (document.getElementById("fpError").textContent = "Fingerprint not recognised. Try again.");
+  if (!bioCredentialId) { const ok=await registerBiometric(); if (!ok) { document.getElementById("fpError").textContent="Biometric setup failed."; return; } }
+  (await assertBiometric()) ? unlock() : (document.getElementById("fpError").textContent="Fingerprint not recognised. Try again.");
 }
 function lock() { show("lockScreen"); }
 function unlock() { hide("lockScreen"); stampActivity(); }
@@ -317,259 +321,257 @@ document.addEventListener("pointerdown", stampActivity);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && shouldLock()) lock(); });
 
 // ── Sheets ───────────────────────────────────────────────────────
-function sendToSheet(data) {
-  data.timestamp = new Date().toISOString();
-  data.lastKnownBalance = state.balance;
-  fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body:JSON.stringify(data) }).catch(()=>{});
-}
-function sheetAdd(tx)    { sendToSheet({ ...tx, action:'add' }); }
-function sheetDelete(id) { sendToSheet({ id, action:'delete' }); }
-function sheetEdit(tx)   { sendToSheet({ ...tx, action:'edit' }); }
-function sheetSyncAll() {
-  showToast("Syncing with Cloud...");
-  sendToSheet({ action:'sync', transactions:state.transactions });
-  setTimeout(() => showToast("Cloud Sync Complete! ☁️"), 1500);
-}
+function sendToSheet(data) { data.timestamp=new Date().toISOString(); data.lastKnownBalance=state.balance; fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(data)}).catch(()=>{}); }
+function sheetAdd(tx)    { sendToSheet({...tx,action:'add'}); }
+function sheetDelete(id) { sendToSheet({id,action:'delete'}); }
+function sheetEdit(tx)   { sendToSheet({...tx,action:'edit'}); }
+function sheetSyncAll()  { showToast("Syncing..."); sendToSheet({action:'sync',transactions:state.transactions}); setTimeout(()=>showToast("Cloud Sync Complete! ☁️"),1500); }
 
 // ── State ────────────────────────────────────────────────────────
 let state = load();
-let formType = "expense", formMaaser = true;
-let editId = null, editType = "expense", editMaaser = false;
-let pendingDeleteId = null;
-let pendingType = "expense";
-// Pending confirm state
-let cpId = null, cpMaaser = true;
+let formType="expense", formMaaser=true;
+let editId=null, editType="expense", editMaaser=false;
+let pendingDeleteId=null, pendingType="expense";
+let cpId=null, cpMaaser=true;
 
 function load() {
-  try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch {}
-  return { balance:0, transactions:[], maaserOwed:0, maaserEverPaid:false, pending:[] };
+  try { const r=localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch {}
+  return {balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[]};
 }
-function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {} }
+function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); } catch {} }
 function fmt(n) { return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n); }
 function today() { return new Date().toISOString().slice(0,10); }
 function show(id) { document.getElementById(id).classList.remove("hidden"); }
 function hide(id) { document.getElementById(id).classList.add("hidden"); }
-function showToast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.remove("hidden");
-  setTimeout(() => t.classList.add("hidden"), 3000);
+function showToast(msg) { const t=document.getElementById("toast"); t.textContent=msg; t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),3000); }
+if (!state.pending) state.pending=[];
+
+// ── Autocomplete ─────────────────────────────────────────────────
+// Build a deduplicated list of past descriptions sorted by most-recently-used
+function getSuggestions(query) {
+  if (!query || query.length < 1) return [];
+  const q = query.toLowerCase();
+  // Build map: desc -> { type, lastDate, count }
+  const map = {};
+  for (const tx of state.transactions) {
+    const key = tx.desc.trim();
+    if (!key) continue;
+    if (!map[key]) map[key] = { type: tx.type, lastDate: tx.date, count: 0 };
+    map[key].count++;
+    if (tx.date > map[key].lastDate) { map[key].lastDate = tx.date; map[key].type = tx.type; }
+  }
+  return Object.entries(map)
+    .filter(([desc]) => desc.toLowerCase().includes(q))
+    .sort((a, b) => {
+      // Prioritise starts-with, then most recent, then most frequent
+      const aStarts = a[0].toLowerCase().startsWith(q);
+      const bStarts = b[0].toLowerCase().startsWith(q);
+      if (aStarts !== bStarts) return aStarts ? -1 : 1;
+      if (b[1].lastDate !== a[1].lastDate) return b[1].lastDate.localeCompare(a[1].lastDate);
+      return b[1].count - a[1].count;
+    })
+    .slice(0, 6)
+    .map(([desc, meta]) => ({ desc, type: meta.type, count: meta.count, lastDate: meta.lastDate }));
 }
+
+let acActiveIdx = -1;
+
+function acInput(inputId, dropId, context) {
+  const val = document.getElementById(inputId).value;
+  const drop = document.getElementById(dropId);
+  const suggestions = getSuggestions(val);
+  acActiveIdx = -1;
+  if (!suggestions.length || !val.trim()) { drop.classList.add("hidden"); drop.innerHTML=""; return; }
+  drop.innerHTML = suggestions.map((s, i) => `
+    <div class="ac-item" id="ac-${dropId}-${i}"
+      onmousedown="acSelect('${inputId}','${dropId}','${context}',${i})"
+      onmouseover="acHover('${dropId}',${i})">
+      <span class="ac-label">${acHighlight(s.desc, val)}</span>
+      <span class="ac-type ${s.type}">${s.type}</span>
+      <span class="ac-meta">${s.count}×</span>
+    </div>`).join("");
+  drop.classList.remove("hidden");
+}
+
+function acHighlight(desc, query) {
+  const idx = desc.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return desc;
+  return desc.slice(0,idx) + `<strong>${desc.slice(idx, idx+query.length)}</strong>` + desc.slice(idx+query.length);
+}
+
+function acHover(dropId, idx) {
+  acActiveIdx = idx;
+  document.querySelectorAll(`#${dropId} .ac-item`).forEach((el,i) => el.classList.toggle("active", i===idx));
+}
+
+function acSelect(inputId, dropId, context, idx) {
+  const drop = document.getElementById(dropId);
+  const items = drop.querySelectorAll(".ac-item .ac-label");
+  if (!items[idx]) return;
+  // Strip HTML tags to get plain text
+  const tmp = document.createElement("div"); tmp.innerHTML = items[idx].innerHTML; 
+  document.getElementById(inputId).value = tmp.textContent;
+  drop.classList.add("hidden"); drop.innerHTML="";
+  acActiveIdx = -1;
+}
+
+function acKeydown(e, dropId, inputId) {
+  const drop = document.getElementById(dropId);
+  if (drop.classList.contains("hidden")) return;
+  const items = drop.querySelectorAll(".ac-item");
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    acActiveIdx = Math.min(acActiveIdx+1, items.length-1);
+    items.forEach((el,i) => el.classList.toggle("active", i===acActiveIdx));
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    acActiveIdx = Math.max(acActiveIdx-1, -1);
+    items.forEach((el,i) => el.classList.toggle("active", i===acActiveIdx));
+  } else if (e.key === "Enter" && acActiveIdx >= 0) {
+    e.preventDefault();
+    const label = items[acActiveIdx].querySelector(".ac-label");
+    const tmp = document.createElement("div"); tmp.innerHTML = label.innerHTML;
+    document.getElementById(inputId).value = tmp.textContent;
+    drop.classList.add("hidden"); drop.innerHTML=""; acActiveIdx=-1;
+  } else if (e.key === "Escape") {
+    drop.classList.add("hidden"); drop.innerHTML=""; acActiveIdx=-1;
+  }
+}
+
+function closeAllDropdowns() {
+  ["formAcDrop","editAcDrop","pendingAcDrop"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add("hidden"); el.innerHTML=""; }
+  });
+  acActiveIdx = -1;
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest(".ac-wrap") && !e.target.closest(".ac-dropdown")) closeAllDropdowns();
+});
 
 // ── Pending Queue ────────────────────────────────────────────────
-if (!state.pending) state.pending = [];
-
 function setPendingType(type) {
-  pendingType = type;
-  document.getElementById("pendingTypeIncome").className  = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("pendingTypeExpense").className = "type-btn expense"+(type==="expense"?" active":"");
+  pendingType=type;
+  document.getElementById("pendingTypeIncome").className  ="type-btn income"+(type==="income"?" active":"");
+  document.getElementById("pendingTypeExpense").className ="type-btn expense"+(type==="expense"?" active":"");
 }
-
 function addToPending() {
-  const desc   = document.getElementById("pendingDesc").value.trim();
-  const amt    = parseFloat(document.getElementById("pendingAmount").value);
-  const source = document.getElementById("pendingSource").value;
-  if (isNaN(amt) || amt <= 0) { showToast("Please enter a valid amount"); return; }
-  const item = {
-    id: Date.now(),
-    type: pendingType,
-    desc: desc || (pendingType === "income" ? "Income" : "Expense"),
-    amount: amt,
-    source: source || "",
-    date: today()
-  };
-  state.pending.push(item);
+  const desc=document.getElementById("pendingDesc").value.trim();
+  const amt=parseFloat(document.getElementById("pendingAmount").value);
+  const source=document.getElementById("pendingSource").value;
+  if (isNaN(amt)||amt<=0) { showToast("Please enter a valid amount"); return; }
+  state.pending.push({ id:Date.now(), type:pendingType, desc:desc||(pendingType==="income"?"Income":"Expense"), amount:amt, source:source||"", date:today() });
   save();
-  // Reset form
-  document.getElementById("pendingDesc").value   = "";
-  document.getElementById("pendingAmount").value = "";
-  document.getElementById("pendingSource").value = "";
-  setPendingType("expense");
-  hide("addPendingModal");
-  renderPending();
-  showToast("Added to pending queue");
+  document.getElementById("pendingDesc").value=""; document.getElementById("pendingAmount").value=""; document.getElementById("pendingSource").value="";
+  setPendingType("expense"); hide("addPendingModal"); renderPending(); showToast("Added to pending queue");
 }
-
 function openConfirmPending(id) {
-  const item = state.pending.find(p => p.id === id);
-  if (!item) return;
-  cpId     = id;
-  cpMaaser = item.type === "income"; // default maaser on for income
-  document.getElementById("cpSource").textContent = item.source ? `From: ${item.source}` : "";
-  document.getElementById("cpDesc").textContent   = item.desc;
-  const amtEl = document.getElementById("cpAmt");
-  amtEl.textContent  = (item.type === "income" ? "+" : "−") + fmt(item.amount);
-  amtEl.style.color  = item.type === "income" ? "#16a34a" : "#dc2626";
-  // Show/hide maaser row based on type
-  const mr = document.getElementById("cpMaaserRow");
-  if (item.type === "income") { mr.style.display = "flex"; } else { mr.style.display = "none"; }
-  document.getElementById("cpMaaserCheck").className = "checkbox" + (cpMaaser ? " checked" : "");
-  document.getElementById("cpConfirmBtn").style.background = item.type === "income" ? "#16a34a" : "#dc2626";
+  const item=state.pending.find(p=>p.id===id); if (!item) return;
+  cpId=id; cpMaaser=item.type==="income";
+  document.getElementById("cpSource").textContent=item.source?`From: ${item.source}`:"";
+  document.getElementById("cpDesc").textContent=item.desc;
+  const amtEl=document.getElementById("cpAmt");
+  amtEl.textContent=(item.type==="income"?"+":"−")+fmt(item.amount); amtEl.style.color=item.type==="income"?"#16a34a":"#dc2626";
+  document.getElementById("cpMaaserRow").style.display=item.type==="income"?"flex":"none";
+  document.getElementById("cpMaaserCheck").className="checkbox"+(cpMaaser?" checked":"");
+  document.getElementById("cpConfirmBtn").style.background=item.type==="income"?"#16a34a":"#dc2626";
   show("confirmPendingModal");
 }
-
-function toggleCpMaaser() {
-  cpMaaser = !cpMaaser;
-  document.getElementById("cpMaaserCheck").className = "checkbox" + (cpMaaser ? " checked" : "");
-}
-
+function toggleCpMaaser() { cpMaaser=!cpMaaser; document.getElementById("cpMaaserCheck").className="checkbox"+(cpMaaser?" checked":""); }
 function approvePending() {
-  const item = state.pending.find(p => p.id === cpId);
-  if (!item) return;
-  const delta     = item.type === "income" ? item.amount : -item.amount;
-  const maaserAmt = (item.type === "income" && cpMaaser) ? item.amount * 0.1 : 0;
-  const tx = {
-    id: Date.now(), type: item.type,
-    desc: item.desc + (item.source ? ` (${item.source})` : ""),
-    amount: item.amount, delta, date: item.date,
-    balance: state.balance + delta,
-    maaser: item.type === "income" && cpMaaser,
-    maaserAmt
-  };
-  state.transactions.unshift(tx);
-  state.balance    += delta;
-  state.maaserOwed += maaserAmt;
-  if (maaserAmt > 0) state.maaserEverPaid = false;
-  // Remove from pending
-  state.pending = state.pending.filter(p => p.id !== cpId);
-  sheetAdd(tx);
-  cpId = null;
-  hide("confirmPendingModal");
-  render();
-  showToast("Transaction added ✓");
+  const item=state.pending.find(p=>p.id===cpId); if (!item) return;
+  const delta=item.type==="income"?item.amount:-item.amount;
+  const maaserAmt=(item.type==="income"&&cpMaaser)?item.amount*0.1:0;
+  const tx={id:Date.now(),type:item.type,desc:item.desc+(item.source?` (${item.source})`:""),amount:item.amount,delta,date:item.date,balance:state.balance+delta,maaser:item.type==="income"&&cpMaaser,maaserAmt};
+  state.transactions.unshift(tx); state.balance+=delta; state.maaserOwed+=maaserAmt;
+  if (maaserAmt>0) state.maaserEverPaid=false;
+  state.pending=state.pending.filter(p=>p.id!==cpId); sheetAdd(tx); cpId=null;
+  hide("confirmPendingModal"); render(); showToast("Transaction added ✓");
 }
-
-function dismissPending() {
-  state.pending = state.pending.filter(p => p.id !== cpId);
-  cpId = null;
-  save();
-  hide("confirmPendingModal");
-  renderPending();
-  showToast("Dismissed");
+function dismissPending() { state.pending=state.pending.filter(p=>p.id!==cpId); cpId=null; save(); hide("confirmPendingModal"); renderPending(); showToast("Dismissed"); }
+function dismissAllPending() { state.pending=[]; save(); renderPending(); showToast("All pending items dismissed"); }
+function quickApprovePending(id, withMaaser) {
+  const item=state.pending.find(p=>p.id===id); if (!item) return;
+  const useMaaser=item.type==="income"&&withMaaser;
+  const delta=item.type==="income"?item.amount:-item.amount;
+  const maaserAmt=useMaaser?item.amount*0.1:0;
+  const tx={id:Date.now(),type:item.type,desc:item.desc+(item.source?` (${item.source})`:""),amount:item.amount,delta,date:item.date,balance:state.balance+delta,maaser:useMaaser,maaserAmt};
+  state.transactions.unshift(tx); state.balance+=delta; state.maaserOwed+=maaserAmt;
+  if (maaserAmt>0) state.maaserEverPaid=false;
+  state.pending=state.pending.filter(p=>p.id!==id); sheetAdd(tx); render(); showToast("Transaction added ✓");
 }
-
-function dismissAllPending() {
-  state.pending = [];
-  save();
-  renderPending();
-  showToast("All pending items dismissed");
-}
-
 function renderPending() {
-  const section = document.getElementById("pendingSection");
-  const list    = document.getElementById("pendingList");
-  const badge   = document.getElementById("pendingBadge");
-  if (!state.pending || state.pending.length === 0) {
-    section.classList.add("hidden");
-    return;
-  }
-  section.classList.remove("hidden");
-  badge.textContent = state.pending.length;
-  list.innerHTML = state.pending.map(item => `
+  const section=document.getElementById("pendingSection");
+  const list=document.getElementById("pendingList");
+  const badge=document.getElementById("pendingBadge");
+  if (!state.pending||state.pending.length===0) { section.classList.add("hidden"); return; }
+  section.classList.remove("hidden"); badge.textContent=state.pending.length;
+  list.innerHTML=state.pending.map(item=>`
     <div class="pending-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div>
           <div style="font-weight:600;font-size:14px">${item.desc}</div>
-          <div style="font-size:11px;color:#94a3b8">${item.date}${item.source ? " · " + item.source : ""}</div>
+          <div style="font-size:11px;color:#94a3b8">${item.date}${item.source?" · "+item.source:""}</div>
         </div>
-        <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#16a34a":"#dc2626"}">
-          ${item.type==="income"?"+":"−"}${fmt(item.amount)}
-        </div>
+        <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#16a34a":"#dc2626"}">${item.type==="income"?"+":"−"}${fmt(item.amount)}</div>
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="openConfirmPending(${item.id})" style="flex:1;padding:7px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">Review & Add</button>
-        <button onclick="quickApprovePending(${item.id}, true)" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ + Maaser</button>
-        <button onclick="quickApprovePending(${item.id}, false)" style="flex:1;padding:7px;background:#475569;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ No Maaser</button>
+        <button onclick="quickApprovePending(${item.id},true)" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ + Maaser</button>
+        <button onclick="quickApprovePending(${item.id},false)" style="flex:1;padding:7px;background:#475569;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ No Maaser</button>
       </div>
-    </div>
-  `).join("");
-}
-
-// Quick approve without opening modal — for income items with/without maaser
-function quickApprovePending(id, withMaaser) {
-  const item = state.pending.find(p => p.id === id);
-  if (!item) return;
-  const useMaaser = item.type === "income" && withMaaser;
-  const delta     = item.type === "income" ? item.amount : -item.amount;
-  const maaserAmt = useMaaser ? item.amount * 0.1 : 0;
-  const tx = {
-    id: Date.now(), type: item.type,
-    desc: item.desc + (item.source ? ` (${item.source})` : ""),
-    amount: item.amount, delta, date: item.date,
-    balance: state.balance + delta,
-    maaser: useMaaser, maaserAmt
-  };
-  state.transactions.unshift(tx);
-  state.balance    += delta;
-  state.maaserOwed += maaserAmt;
-  if (maaserAmt > 0) state.maaserEverPaid = false;
-  state.pending = state.pending.filter(p => p.id !== id);
-  sheetAdd(tx);
-  render();
-  showToast("Transaction added ✓");
+    </div>`).join("");
 }
 
 // ── Bulk Import ──────────────────────────────────────────────────
 function runBulkImport() {
-  const rawData = document.getElementById("importBox").value;
-  if (!rawData.trim()) return;
-  const lines = rawData.trim().split('\n');
-  const baseTime = Date.now();
-  let importedCount = 0;
-  lines.forEach((line, index) => {
-    const match = line.trim().match(/^([+-])\$?([\d.]+)(?:\s+(.+))?$/);
+  const rawData=document.getElementById("importBox").value; if (!rawData.trim()) return;
+  const lines=rawData.trim().split('\n'); const baseTime=Date.now(); let importedCount=0;
+  lines.forEach((line,index)=>{
+    const match=line.trim().match(/^([+-])\$?([\d.]+)(?:\s+(.+))?$/);
     if (match) {
-      const isIncome    = match[1] === '+';
-      const amount      = parseFloat(match[2]);
-      const description = (match[3] || (isIncome ? 'Income' : 'Expense')).trim();
-      const isMaaserPay = description.toLowerCase().includes('maser') || description.toLowerCase().includes('maaser');
-      const delta       = isIncome ? amount : -amount;
-      const tx = { id:baseTime+index, type:isIncome?'income':'expense', desc:description, amount, delta, date:today(), balance:state.balance+delta, maaser:false, maaserAmt:0 };
-      state.transactions.unshift(tx);
-      state.balance += delta;
-      if (!isIncome && isMaaserPay) state.maaserOwed = Math.max(0, state.maaserOwed - amount);
+      const isIncome=match[1]==='+'; const amount=parseFloat(match[2]);
+      const description=(match[3]||(isIncome?'Income':'Expense')).trim();
+      const isMaaserPay=description.toLowerCase().includes('maser')||description.toLowerCase().includes('maaser');
+      const delta=isIncome?amount:-amount;
+      const tx={id:baseTime+index,type:isIncome?'income':'expense',desc:description,amount,delta,date:today(),balance:state.balance+delta,maaser:false,maaserAmt:0};
+      state.transactions.unshift(tx); state.balance+=delta;
+      if (!isIncome&&isMaaserPay) state.maaserOwed=Math.max(0,state.maaserOwed-amount);
       importedCount++;
     }
   });
-  if (importedCount > 0) {
-    recalcBalances(); render(); hide('importModal');
-    document.getElementById("importBox").value = "";
-    showToast(`Imported ${importedCount} transaction${importedCount>1?'s':''}!`);
-  } else {
-    alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
-  }
+  if (importedCount>0) { recalcBalances(); render(); hide('importModal'); document.getElementById("importBox").value=""; showToast(`Imported ${importedCount} transaction${importedCount>1?'s':''}!`); }
+  else alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
 }
 
 // ── Render ───────────────────────────────────────────────────────
 function render() {
-  const bal = state.balance;
-  const balEl = document.getElementById("balanceDisplay");
-  balEl.textContent = fmt(bal);
-  balEl.style.color = bal >= 0 ? "#4ade80" : "#f87171";
-  const tIn  = state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
-  const tOut = state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
-  document.getElementById("totalIn").textContent  = "+"+fmt(tIn);
-  document.getElementById("totalOut").textContent = "-"+fmt(tOut);
-  const mo = state.maaserOwed;
-  document.getElementById("maaserDisplay").textContent = fmt(mo);
-  document.getElementById("maaserDisplay").style.color = mo > 0 ? "#b45309" : "#16a34a";
-  if (mo > 0) { show("paidMaaserBtn"); hide("maaserPaidBadge"); }
+  const bal=state.balance; const balEl=document.getElementById("balanceDisplay");
+  balEl.textContent=fmt(bal); balEl.style.color=bal>=0?"#4ade80":"#f87171";
+  const tIn=state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const tOut=state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  document.getElementById("totalIn").textContent="+"+fmt(tIn);
+  document.getElementById("totalOut").textContent="-"+fmt(tOut);
+  const mo=state.maaserOwed;
+  document.getElementById("maaserDisplay").textContent=fmt(mo);
+  document.getElementById("maaserDisplay").style.color=mo>0?"#b45309":"#16a34a";
+  if (mo>0) { show("paidMaaserBtn"); hide("maaserPaidBadge"); }
   else if (state.maaserEverPaid) { hide("paidMaaserBtn"); show("maaserPaidBadge"); document.getElementById("maaserPaidBadge").style.display="flex"; }
   else { hide("paidMaaserBtn"); hide("maaserPaidBadge"); }
-  renderPending();
-  renderTxList();
-  save();
+  renderPending(); renderTxList(); save();
 }
 
 function renderTxList() {
-  const search = (document.getElementById("searchInput").value || "").toLowerCase();
-  const filtered = state.transactions.filter(t => t.desc.toLowerCase().includes(search) || t.date.includes(search));
-  const list  = document.getElementById("txList");
-  const empty = document.getElementById("emptyState");
-  if (state.transactions.length === 0) { show("emptyState"); empty.textContent="No transactions yet. Add your first one above!"; list.innerHTML=""; document.getElementById("searchInput").style.display="none"; return; }
-  document.getElementById("searchInput").style.display = "block";
-  if (filtered.length === 0) { show("emptyState"); empty.textContent="No results found."; list.innerHTML=""; return; }
+  const search=(document.getElementById("searchInput").value||"").toLowerCase();
+  const filtered=state.transactions.filter(t=>t.desc.toLowerCase().includes(search)||t.date.includes(search));
+  const list=document.getElementById("txList"); const empty=document.getElementById("emptyState");
+  if (state.transactions.length===0) { show("emptyState"); empty.textContent="No transactions yet. Add your first one above!"; list.innerHTML=""; document.getElementById("searchInput").style.display="none"; return; }
+  document.getElementById("searchInput").style.display="block";
+  if (filtered.length===0) { show("emptyState"); empty.textContent="No results found."; list.innerHTML=""; return; }
   hide("emptyState");
-  list.innerHTML = filtered.map(tx => `
+  list.innerHTML=filtered.map(tx=>`
     <div class="card">
       <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${tx.type==="income"?"↑":"↓"}</div>
       <div style="flex:1;min-width:0">
@@ -590,49 +592,45 @@ function renderTxList() {
 
 // ── Delete ───────────────────────────────────────────────────────
 function openDeleteModal(id) {
-  const tx = state.transactions.find(t=>t.id===id); if (!tx) return;
-  pendingDeleteId = id;
-  document.getElementById("deleteModalDesc").textContent = tx.desc;
-  document.getElementById("deleteModalAmt").textContent  = (tx.type==="income"?"+":"−")+fmt(tx.amount);
-  document.getElementById("deleteModalAmt").style.color  = tx.type==="income"?"#16a34a":"#dc2626";
+  const tx=state.transactions.find(t=>t.id===id); if (!tx) return;
+  pendingDeleteId=id;
+  document.getElementById("deleteModalDesc").textContent=tx.desc;
+  document.getElementById("deleteModalAmt").textContent=(tx.type==="income"?"+":"−")+fmt(tx.amount);
+  document.getElementById("deleteModalAmt").style.color=tx.type==="income"?"#16a34a":"#dc2626";
   show("deleteModal");
 }
 function confirmDelete() {
-  const id = pendingDeleteId; if (!id) return;
-  const idx = state.transactions.findIndex(t=>t.id===id); if (idx===-1) return;
-  const tx = state.transactions[idx];
-  state.transactions.splice(idx,1);
-  state.balance -= tx.delta;
+  const id=pendingDeleteId; if (!id) return;
+  const idx=state.transactions.findIndex(t=>t.id===id); if (idx===-1) return;
+  const tx=state.transactions[idx];
+  state.transactions.splice(idx,1); state.balance-=tx.delta;
   sheetDelete(id); recalcBalances();
-  state.maaserOwed = state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  pendingDeleteId = null; hide("deleteModal"); render();
-  showToast("Transaction deleted");
+  state.maaserOwed=state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
+  pendingDeleteId=null; hide("deleteModal"); render(); showToast("Transaction deleted");
 }
 
 // ── Form ─────────────────────────────────────────────────────────
 function openForm(type) {
-  formType = type; formMaaser = (type==="income");
+  formType=type; formMaaser=(type==="income");
   document.getElementById("formDesc").value=""; document.getElementById("formAmount").value=""; document.getElementById("formDate").value=today();
-  document.getElementById("formTitle").textContent    = type==="income"?"➕ Add Income":"➖ Add Expense";
-  document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
-  const mr = document.getElementById("maaserRow");
+  document.getElementById("formTitle").textContent=type==="income"?"➕ Add Income":"➖ Add Expense";
+  document.getElementById("typeIncome").className="type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className="type-btn expense"+(type==="expense"?" active":"");
+  const mr=document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
-  show("txForm");
+  document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");
+  closeAllDropdowns(); show("txForm");
 }
+function closeForm() { closeAllDropdowns(); hide("txForm"); }
 function setFormType(type) {
   formType=type; formMaaser=(type==="income");
-  document.getElementById("typeIncome").className     = "type-btn income"+(type==="income"?" active":"");
-  document.getElementById("typeExpense").className    = "type-btn expense"+(type==="expense"?" active":"");
-  const mr = document.getElementById("maaserRow");
+  document.getElementById("typeIncome").className="type-btn income"+(type==="income"?" active":"");
+  document.getElementById("typeExpense").className="type-btn expense"+(type==="expense"?" active":"");
+  const mr=document.getElementById("maaserRow");
   if (type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
-  document.getElementById("formMaaserCheck").className = "checkbox"+(formMaaser?" checked":"");
-}
-function toggleFormMaaser() {
-  formMaaser=!formMaaser;
   document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");
 }
+function toggleFormMaaser() { formMaaser=!formMaaser; document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":""); }
 function saveTx() {
   const desc=document.getElementById("formDesc").value.trim();
   const amt=parseFloat(document.getElementById("formAmount").value);
@@ -643,15 +641,14 @@ function saveTx() {
   const tx={id:Date.now(),type:formType,desc,amount:amt,delta,date,balance:state.balance+delta,maaser:formType==="income"&&formMaaser,maaserAmt};
   state.transactions.unshift(tx); state.balance+=delta; state.maaserOwed+=maaserAmt;
   if (maaserAmt>0) state.maaserEverPaid=false;
-  sheetAdd(tx); showToast("Saved ✓"); hide("txForm"); render();
+  sheetAdd(tx); showToast("Saved ✓"); closeForm(); render();
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
 function recalcBalances() {
   if (!state.transactions.length) return;
-  const txs=[...state.transactions].reverse();
-  let s=state.balance; for (const t of txs) s-=t.delta;
-  let running=s;
+  const txs=[...state.transactions].reverse(); let s=state.balance;
+  for (const t of txs) s-=t.delta; let running=s;
   for (let i=txs.length-1;i>=0;i--) { running+=txs[i].delta; txs[i].balance=running; }
   state.transactions=[...txs].reverse();
 }
@@ -659,8 +656,7 @@ function toggleMaaser(id) {
   const tx=state.transactions.find(t=>t.id===id); if (!tx||tx.type!=="income") return;
   tx.maaser=!tx.maaser; tx.maaserAmt=tx.maaser?tx.amount*0.1:0;
   state.maaserOwed=state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  if (state.maaserOwed>0) state.maaserEverPaid=false;
-  render();
+  if (state.maaserOwed>0) state.maaserEverPaid=false; render();
 }
 function confirmMaaser() { document.getElementById("maaserConfirmAmt").textContent=fmt(state.maaserOwed); show("maaserConfirm"); }
 function clearMaaser() {
@@ -668,28 +664,29 @@ function clearMaaser() {
   const tx={id:Date.now(),type:"expense",desc:"🕍 Maaser Payment",amount:amt,delta:-amt,date:today(),balance:state.balance-amt,maaser:false,maaserAmt:0};
   state.transactions.unshift(tx); state.balance-=amt;
   state.transactions=state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));
-  state.maaserOwed=0; state.maaserEverPaid=true;
-  sheetAdd(tx); hide("maaserConfirm"); render();
+  state.maaserOwed=0; state.maaserEverPaid=true; sheetAdd(tx); hide("maaserConfirm"); render();
 }
 function setStartBalance() {
   const val=parseFloat(document.getElementById("newBalanceInput").value); if (isNaN(val)) return;
   const txs=[...state.transactions].reverse(); let running=val;
   for (let i=0;i<txs.length;i++) { running+=txs[i].delta; txs[i].balance=running; }
-  state.transactions=txs.reverse();
-  state.balance=state.transactions.length>0?state.transactions[0].balance:val;
+  state.transactions=txs.reverse(); state.balance=state.transactions.length>0?state.transactions[0].balance:val;
   hide("setBalancePanel"); render();
 }
 function openEdit(id) {
   const tx=state.transactions.find(t=>t.id===id); if (!tx) return;
   editId=id; editType=tx.type; editMaaser=tx.maaser||false;
-  document.getElementById("editDesc").value=tx.desc; document.getElementById("editAmount").value=tx.amount; document.getElementById("editDate").value=tx.date;
+  document.getElementById("editDesc").value=tx.desc;
+  document.getElementById("editAmount").value=tx.amount;
+  document.getElementById("editDate").value=tx.date;
   document.getElementById("editTypeIncome").className="type-btn income"+(tx.type==="income"?" active":"");
   document.getElementById("editTypeExpense").className="type-btn expense"+(tx.type==="expense"?" active":"");
   const mr=document.getElementById("editMaaserRow");
   if (tx.type==="income") { mr.classList.remove("hidden"); mr.style.display="flex"; } else { mr.classList.add("hidden"); }
   document.getElementById("editMaaserCheck").className="checkbox"+(editMaaser?" checked":"");
-  show("editModal");
+  closeAllDropdowns(); show("editModal");
 }
+function closeEditModal() { closeAllDropdowns(); hide("editModal"); }
 function setEditType(type) {
   editType=type; editMaaser=false;
   document.getElementById("editTypeIncome").className="type-btn income"+(type==="income"?" active":"");
@@ -710,11 +707,11 @@ function saveEdit() {
   tx.maaser=editType==="income"&&editMaaser; tx.maaserAmt=tx.maaser?amt*0.1:0;
   state.balance+=(newDelta-oldDelta); recalcBalances();
   state.maaserOwed=state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0);
-  sheetEdit(tx); showToast("Updated ✓"); hide("editModal"); render();
+  sheetEdit(tx); showToast("Updated ✓"); closeEditModal(); render();
 }
 
 // ── Init ─────────────────────────────────────────────────────────
-document.getElementById("formDate").value = today();
+document.getElementById("formDate").value=today();
 render();
 if (shouldLock()) lock(); else stampActivity();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
