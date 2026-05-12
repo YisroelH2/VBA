@@ -506,8 +506,8 @@ function renderPending() {
   const section=document.getElementById("pendingSection");
   const list=document.getElementById("pendingList");
   const badge=document.getElementById("pendingBadge");
-  if (!state.pending||state.pending.length===0) { section.classList.add("hidden"); return; }
-  section.classList.remove("hidden"); badge.textContent=state.pending.length;
+  if (!state.pending||state.pending.length===0) { section.classList.add("hidden"); updateBadge(); return; }
+  section.classList.remove("hidden"); badge.textContent=state.pending.length; updateBadge();
   list.innerHTML=state.pending.map(item=>`
     <div class="pending-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -710,11 +710,54 @@ function saveEdit() {
   sheetEdit(tx); showToast("Updated ✓"); closeEditModal(); render();
 }
 
+// ── Poll Sheets for Tasker-pushed pending items ──────────────────
+async function pollPending() {
+  try {
+    const res = await fetch(SCRIPT_URL + "?action=getPending");
+    const data = await res.json();
+    if (!data.success || !data.items || data.items.length === 0) return;
+    let added = 0;
+    for (const item of data.items) {
+      // Avoid duplicates — Sheets ID is timestamp string from Tasker
+      const alreadyExists = state.pending.some(p => String(p.id) === String(item.id))
+                         || state.transactions.some(t => String(t.id) === String(item.id));
+      if (!alreadyExists) {
+        state.pending.push({
+          id: item.id, type: item.type || "expense",
+          desc: item.desc || "Unknown", amount: parseFloat(item.amount) || 0,
+          source: item.source || "", date: item.date || today()
+        });
+        added++;
+      }
+    }
+    if (added > 0) {
+      save(); renderPending();
+      // Badge the app icon (where supported)
+      if ('setAppBadge' in navigator) navigator.setAppBadge(state.pending.length).catch(()=>{});
+      showToast(`${added} new item${added>1?'s':''} in pending queue`);
+    }
+  } catch {}
+}
+
+// Update badge whenever pending changes
+function updateBadge() {
+  if ('setAppBadge' in navigator) {
+    state.pending.length > 0
+      ? navigator.setAppBadge(state.pending.length).catch(()=>{})
+      : navigator.clearAppBadge().catch(()=>{});
+  }
+}
+
 // ── Init ─────────────────────────────────────────────────────────
 document.getElementById("formDate").value=today();
 render();
+updateBadge();
 if (shouldLock()) lock(); else stampActivity();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+// Poll every 3 minutes when app is open
+pollPending();
+setInterval(pollPending, 3 * 60 * 1000);
 </script>
 </body>
 </html>
