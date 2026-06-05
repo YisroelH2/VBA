@@ -164,7 +164,7 @@
     <div style="flex:1"></div>
     <div id="txCount" style="font-size:11px;color:#94a3b8"></div>
   </div>
-  <input id="searchInput" class="input" placeholder="🔍 Search transactions..." style="margin-bottom:12px;display:none" oninput="debouncedSearch()" />
+  <input id="searchInput" class="input" placeholder="🔍 Search by name, date, or $amount…" style="margin-bottom:12px;display:none" oninput="debouncedSearch()" />
 
   <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
   <div id="txList"></div>
@@ -641,7 +641,7 @@ async function biometricClearAll(){
   }
   showToast("Verify fingerprint to continue...");
   const ok=await assertBiometric();
-  if(ok){ show("clearStep3"); }
+  if(ok){ history.pushState({vba:'clearStep3'},''); show("clearStep3"); }
   else { showToast("Fingerprint not recognised — clear all cancelled."); }
 }
 function executeClearAll(){
@@ -923,7 +923,13 @@ function render(){
 
 function renderTxList(){
   const search=(document.getElementById("searchInput").value||"").toLowerCase();
-  let filtered=state.transactions.filter(t=>t.desc.toLowerCase().includes(search)||t.date.includes(search));
+  // Strip $ and commas so "$24.99" and "24.99" both match
+  const amtSearch=search.replace(/[$,\s]/g,'');
+  let filtered=state.transactions.filter(t=>
+    t.desc.toLowerCase().includes(search) ||
+    t.date.includes(search) ||
+    (amtSearch && (String(t.amount).includes(amtSearch) || String(t.balance).includes(amtSearch)))
+  );
   if(txFilter==="starred")filtered=filtered.filter(t=>t.starred);
   const list=document.getElementById("txList"),empty=document.getElementById("emptyState");
   const total=state.transactions.length;
@@ -979,8 +985,9 @@ function confirmDelete(){
   const idx=state.transactions.findIndex(t=>t.id===id);if(idx===-1)return;
   const tx=state.transactions[idx];
   state.transactions.splice(idx,1);state.balance=roundMoney(state.balance-tx.delta);
+  // FIX: subtract this tx's maaser contribution rather than recalc from scratch
+  if(tx.maaser)state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));
   sheetDelete(id);recalcBalances();invalidateAcCache();
-  state.maaserOwed=roundMoney(state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0));
   pendingDeleteId=null;hide("deleteModal");render();showToast("Transaction deleted");
 }
 
@@ -1033,11 +1040,22 @@ function recalcBalances(){
   for(let i=txs.length-1;i>=0;i--){running=roundMoney(running+txs[i].delta);txs[i].balance=running;}
   state.transactions=[...txs].reverse();
 }
+// ── FIX: Maaser bug — add/subtract instead of recalc-from-scratch
+// Recalculating from scratch ignores partial payments (e.g. owed $50,
+// paid $20, now owed $30 — but recalc would snap back to $50).
 function toggleMaaser(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx||tx.type!=="income")return;
-  tx.maaser=!tx.maaser;tx.maaserAmt=tx.maaser?roundMoney(tx.amount*0.1):0;
-  state.maaserOwed=roundMoney(state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0));
-  if(state.maaserOwed>0)state.maaserEverPaid=false;render();
+  if(tx.maaser){
+    // Turning OFF: subtract this tx's contribution
+    state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));
+    tx.maaser=false;tx.maaserAmt=0;
+  }else{
+    // Turning ON: add this tx's contribution
+    tx.maaser=true;tx.maaserAmt=roundMoney(tx.amount*0.1);
+    state.maaserOwed=roundMoney(state.maaserOwed+tx.maaserAmt);
+    state.maaserEverPaid=false; // new maaser added
+  }
+  render();
 }
 function openEdit(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx)return;
@@ -1067,17 +1085,35 @@ function saveEdit(){
   if(!desc||isNaN(amt)||amt<=0)return;
   const tx=state.transactions.find(t=>t.id===editId);if(!tx)return;
   const oldDelta=tx.delta,newDelta=editType==="income"?amt:-amt;
+  // FIX: track old maaser amount before overwriting
+  const oldMaaserAmt=tx.maaser?tx.maaserAmt:0;
   tx.type=editType;tx.desc=desc;tx.amount=amt;tx.delta=newDelta;tx.date=date;
   tx.maaser=editType==="income"&&editMaaser;tx.maaserAmt=tx.maaser?roundMoney(amt*0.1):0;
   state.balance=roundMoney(state.balance+(newDelta-oldDelta));
-  recalcBalances();
-  state.maaserOwed=roundMoney(state.transactions.filter(t=>t.maaser).reduce((s,t)=>s+t.maaserAmt,0));
+  // FIX: add/subtract difference rather than recalc from scratch
+  state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-oldMaaserAmt+tx.maaserAmt));
+  if(tx.maaserAmt>oldMaaserAmt)state.maaserEverPaid=false;
   invalidateAcCache();sheetEdit(tx);showToast("Updated ✓");closeEditModal();render();
 }
 
 // ── Calculator ────────────────────────────────────────────────────
 let calcS={display:'0',prev:null,op:null,waiting:false};
-function openCalculator(){show("calcScreen");updateCalcDisplay();}
+function openCalculator(){
+  show("calcScreen");
+  // FIX: push history state so Android back button closes calculator
+  // instead of exiting the app
+  history.pushState({vba:'calc'},'');
+  updateCalcDisplay();
+}
+
+// Handle Android back button for full-screen overlays
+window.addEventListener('popstate',()=>{
+  if(!document.getElementById('calcScreen').classList.contains('hidden')){
+    hide('calcScreen');
+  } else if(!document.getElementById('clearStep3').classList.contains('hidden')){
+    hide('clearStep3');
+  }
+});
 function calcInput(v){
   if(calcS.waiting){calcS.display=String(v);calcS.waiting=false;}
   else{calcS.display=calcS.display==='0'?String(v):calcS.display+v;}
