@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
-  <!-- CSP: only allows data to go to Google Scripts — blocks everything else -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com; img-src 'self' data:;" />
   <title>Virtual Bank Account</title>
   <link rel="manifest" href="manifest.json" />
@@ -13,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; padding-bottom: 80px; }
+    body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; padding-bottom: 150px; }
     #root { max-width: 520px; margin: 0 auto; }
     button { cursor: pointer; font-family: inherit; }
     input, textarea, select { font-family: inherit; }
@@ -35,7 +34,7 @@
     .small-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #cbd5e1; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; vertical-align: middle; margin-right: 4px; }
     .small-check.checked { border-color: #b45309; background: #b45309; }
     .hidden { display: none !important; }
-    #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
+    #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
     #lockScreen { position: fixed; inset: 0; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
     #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
     #lockScreen .fp-error { color: #f87171; font-size: 13px; margin-top: 4px; min-height: 20px; }
@@ -62,12 +61,9 @@
     .toggle-slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
     .toggle-wrap input:checked + .toggle-slider:before { transform: translateX(20px); }
     .month-header { font-size: 11px; font-weight: 700; color: #94a3b8; padding: 12px 4px 4px; text-transform: uppercase; letter-spacing: 0.07em; }
-    /* Context menu sheet */
     #ctxSheet { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.4); }
     #ctxSheet .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 16px; max-width: 520px; margin: 0 auto; }
     .ctx-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 12px; background: #f8fafc; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; cursor: pointer; text-align: left; }
-    .ctx-btn:active { background: #f1f5f9; }
-    /* Calculator */
     #calcScreen { position: fixed; inset: 0; background: #1c1c1e; z-index: 400; display: flex; flex-direction: column; }
     .calc-top { flex: 0 0 auto; padding: 16px 20px 4px; display: flex; justify-content: space-between; align-items: center; }
     .calc-display-wrap { flex: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 8px 20px 12px; }
@@ -79,14 +75,27 @@
     .c-num { background: #333; color: #fff; }
     .c-op  { background: #f1a500; color: #fff; }
     .c-fn  { background: #a5a5a5; color: #000; }
-    .c-eq  { background: #f1a500; color: #fff; }
     .c-zero { border-radius: 36px; grid-column: span 2; justify-content: flex-start; padding-left: 26px; }
     .calc-use { margin: 8px 12px 16px; padding: 16px; background: #16a34a; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
-    /* Clear all step 3 */
     #clearStep3 { position: fixed; inset: 0; background: #fff; z-index: 500; display: flex; flex-direction: column; padding: 24px; }
-    /* Floating calculator button */
-    #calcFab { position: fixed; bottom: 24px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1e293b; color: #fff; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    /* Filter tabs */
+    /* Tab bar */
+    #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e2e8f0; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; }
+    .tab-btn { flex: 1; padding: 10px 0 12px; background: none; border: none; font-size: 10px; font-weight: 700; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .tab-btn.active { color: #1e293b; }
+    .tab-btn .tab-icon { font-size: 22px; }
+    /* Portfolio */
+    .port-section { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .port-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .port-section-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .port-section-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .inv-card { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+    .loan-card { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+    .loan-card.overdue { border-color: #fca5a5; background: #fff5f5; }
+    .loan-card.paid { opacity: 0.65; }
+    .progress-bar { background: #e2e8f0; border-radius: 4px; height: 6px; overflow: hidden; margin: 6px 0; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+    /* Calc FAB - above tab bar */
+    #calcFab { position: fixed; bottom: 70px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1e293b; color: #fff; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .filter-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; }
     .filter-tab.active { background: #1e293b; color: #fff; border-color: #1e293b; }
   </style>
@@ -106,74 +115,155 @@
 <div id="root">
   <div style="text-align:center;font-weight:700;font-size:18px;color:#1e293b;margin-bottom:12px" id="appTitle">💳 Virtual Bank Account</div>
 
-  <!-- Header -->
-  <div style="background:#1e293b;border-radius:16px;padding:24px 20px;margin-bottom:12px;color:#fff">
-    <div style="font-size:13px;opacity:0.6;margin-bottom:4px">Current Balance</div>
-    <div id="balanceDisplay" style="font-size:40px;font-weight:700;color:#4ade80">$0.00</div>
-    <div style="display:flex;gap:20px;margin-top:12px">
-      <div><div style="font-size:11px;opacity:0.5">TOTAL IN</div><div id="totalIn" style="font-size:15px;color:#4ade80">+$0.00</div></div>
-      <div><div style="font-size:11px;opacity:0.5">TOTAL OUT</div><div id="totalOut" style="font-size:15px;color:#f87171">-$0.00</div></div>
+  <!-- ── HEADER (always visible) ── -->
+  <div style="background:#1e293b;border-radius:16px;padding:20px;margin-bottom:12px;color:#fff">
+    <div style="font-size:12px;opacity:0.5;margin-bottom:2px">Total Net Worth</div>
+    <div id="netWorthDisplay" style="font-size:42px;font-weight:700;color:#4ade80">$0.00</div>
+    <!-- Three-column breakdown -->
+    <div style="display:flex;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding-right:4px">
+        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">💳 SPENDABLE</div>
+        <div id="balanceDisplay" style="font-size:16px;font-weight:600;color:#4ade80">$0.00</div>
+      </div>
+      <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1)">
+        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">📈 INVESTED</div>
+        <div id="investedDisplay" style="font-size:16px;font-weight:600;color:#60a5fa">$0.00</div>
+      </div>
+      <div style="flex:1;text-align:center;padding-left:4px">
+        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">💸 LENT OUT</div>
+        <div id="lentOutDisplay" style="font-size:16px;font-weight:600;color:#f97316">$0.00</div>
+      </div>
     </div>
-    <div class="row" style="margin-top:16px;margin-bottom:0">
+    <div class="row" style="margin-top:14px;margin-bottom:0">
       <button class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="openForm('income')">+ Add Income</button>
       <button class="btn" style="flex:1;background:#dc2626;color:#fff" onclick="openForm('expense')">− Add Expense</button>
       <button class="btn" style="background:#334155;color:#fff;padding:8px 12px" onclick="openSettings()">⚙</button>
     </div>
   </div>
 
-  <!-- Maaser Box -->
-  <div style="background:#fefce8;border:1px solid #fde047;border-radius:12px;padding:14px 16px;margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:4px">🕍 Maaser Owed (10%)</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div id="maaserDisplay" style="font-size:26px;font-weight:700;color:#6b7280">$0.00</div>
-          <button onclick="openAddMaaserModal()" style="font-size:11px;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">+ Add</button>
+  <!-- ══════════ LEDGER TAB ══════════ -->
+  <div id="ledgerView">
+
+    <!-- Stats bar -->
+    <div style="display:flex;gap:16px;margin-bottom:12px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #f1f5f9">
+      <div><div style="font-size:10px;color:#94a3b8;font-weight:600">TOTAL IN</div><div id="totalIn" style="font-size:14px;color:#16a34a;font-weight:600">+$0.00</div></div>
+      <div><div style="font-size:10px;color:#94a3b8;font-weight:600">TOTAL OUT</div><div id="totalOut" style="font-size:14px;color:#dc2626;font-weight:600">-$0.00</div></div>
+      <div style="margin-left:auto"><div style="font-size:10px;color:#94a3b8;font-weight:600">TRANSACTIONS</div><div id="txCountStat" style="font-size:14px;color:#475569;font-weight:600">0</div></div>
+    </div>
+
+    <!-- Maaser Box -->
+    <div style="background:#fefce8;border:1px solid #fde047;border-radius:12px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:4px">🕍 Maaser Owed (10%)</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div id="maaserDisplay" style="font-size:26px;font-weight:700;color:#6b7280">$0.00</div>
+            <button onclick="openAddMaaserModal()" style="font-size:11px;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">+ Add</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button>
+          <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="openMaaserPayModal()">✓ Paid</button>
+        </div>
+        <div id="maaserPaidBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px">
+          <span style="font-size:18px">✅</span>
+          <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button>
-        <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="openMaaserPayModal()">✓ Paid</button>
+    </div>
+
+    <!-- Pending Queue -->
+    <div id="pendingSection" class="hidden" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:700;font-size:14px;color:#92400e">⏳ Pending Review <span id="pendingBadge" class="badge"></span></div>
+        <button onclick="dismissAllPending()" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
       </div>
-      <div id="maaserPaidBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px">
-        <span style="font-size:18px">✅</span>
-        <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
+      <div id="pendingList"></div>
+    </div>
+
+    <!-- Subtle links -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:-4px">
+      <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
+      <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import</button>
+    </div>
+
+    <!-- Filter + Search -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <button id="filterAllBtn" class="filter-tab active" onclick="setTxFilter('all')">All</button>
+      <button id="filterStarBtn" class="filter-tab" onclick="setTxFilter('starred')">⭐ Starred</button>
+      <div style="flex:1"></div>
+      <div id="txCount" style="font-size:11px;color:#94a3b8"></div>
+    </div>
+    <input id="searchInput" class="input" placeholder="🔍 Search by name, date, or $amount…" style="margin-bottom:12px;display:none" oninput="debouncedSearch()" />
+    <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
+    <div id="txList"></div>
+  </div>
+
+  <!-- ══════════ PORTFOLIO TAB ══════════ -->
+  <div id="portfolioView" class="hidden">
+
+    <!-- Portfolio overview -->
+    <div id="portfolioOverview" style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid #f1f5f9">
+      <div style="font-size:13px;font-weight:700;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;font-size:11px">Portfolio Overview</div>
+      <div style="display:flex;gap:0">
+        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #f1f5f9">
+          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">COST BASIS</div>
+          <div id="ovCostBasis" style="font-size:15px;font-weight:700;color:#1e293b">$0.00</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #f1f5f9">
+          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">CURR VALUE</div>
+          <div id="ovCurrValue" style="font-size:15px;font-weight:700;color:#1e293b">$0.00</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:8px">
+          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">TOTAL P&L</div>
+          <div id="ovPL" style="font-size:15px;font-weight:700;color:#94a3b8">—</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Pending Queue -->
-  <div id="pendingSection" class="hidden" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-weight:700;font-size:14px;color:#92400e">⏳ Pending Review <span id="pendingBadge" class="badge"></span></div>
-      <button onclick="dismissAllPending()" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
+    <!-- Investments section -->
+    <div class="port-section">
+      <div class="port-section-header">
+        <div>
+          <div class="port-section-title">📈 Investments</div>
+          <div class="port-section-sub" id="investSummary">Nothing tracked yet</div>
+        </div>
+        <button onclick="openAddInvestment()" style="padding:7px 14px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
+      </div>
+      <div id="investmentList"></div>
     </div>
-    <div id="pendingList"></div>
-  </div>
 
-  <!-- Subtle links -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:-4px">
-    <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
-    <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import</button>
-  </div>
+    <!-- Loans section -->
+    <div class="port-section">
+      <div class="port-section-header">
+        <div>
+          <div class="port-section-title">💸 Lent to Friends</div>
+          <div class="port-section-sub" id="loanSummary">Nothing lent out</div>
+        </div>
+        <button onclick="openAddLoan()" style="padding:7px 14px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
+      </div>
+      <div id="loanList"></div>
+    </div>
 
-  <!-- Transaction filter + search -->
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <button id="filterAllBtn" class="filter-tab active" onclick="setTxFilter('all')">All</button>
-    <button id="filterStarBtn" class="filter-tab" onclick="setTxFilter('starred')">⭐ Starred</button>
-    <div style="flex:1"></div>
-    <div id="txCount" style="font-size:11px;color:#94a3b8"></div>
   </div>
-  <input id="searchInput" class="input" placeholder="🔍 Search by name, date, or $amount…" style="margin-bottom:12px;display:none" oninput="debouncedSearch()" />
-
-  <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
-  <div id="txList"></div>
 </div>
 
-<!-- Floating calculator button -->
+<!-- Tab Bar -->
+<div id="tabBar">
+  <button class="tab-btn active" id="tabLedger" onclick="switchTab('ledger')">
+    <span class="tab-icon">💳</span>Ledger
+  </button>
+  <button class="tab-btn" id="tabPortfolio" onclick="switchTab('portfolio')">
+    <span class="tab-icon">📊</span>Portfolio
+  </button>
+</div>
+
+<!-- Floating Calculator Button -->
 <button id="calcFab" onclick="openCalculator()" title="Calculator">🧮</button>
 
-<!-- ── Add Transaction Form ── -->
+<!-- ══ MODALS ══ -->
+
+<!-- Add Transaction Form -->
 <div id="txForm" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px">
   <div class="modal">
     <div id="formTitle" style="font-weight:600;margin-bottom:12px">Add Transaction</div>
@@ -187,7 +277,7 @@
       <div id="formAcDrop" class="ac-dropdown hidden"></div>
     </div>
     <div class="row">
-      <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" maxlength="10" style="flex:1" />
+      <input id="formAmount" class="input" type="number" placeholder="Amount" min="0" style="flex:1" />
       <input id="formDate" class="input" type="date" style="flex:1" />
     </div>
     <div id="maaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleFormMaaser()">
@@ -201,17 +291,16 @@
   </div>
 </div>
 
-<!-- ── Settings Modal ── -->
+<!-- Settings -->
 <div id="settingsModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:16px">⚙ Settings</div>
-
     <div class="setting-row">
       <div><div class="setting-label">App name</div></div>
       <input id="settingAppName" class="input" style="width:150px;font-size:13px" placeholder="Virtual Bank Account" maxlength="30" />
     </div>
     <div class="setting-row" style="flex-direction:column;align-items:stretch">
-      <div style="margin-bottom:6px"><div class="setting-label">Apps Script URL</div><div class="setting-sub">Your Google Sheets webhook — private, stored only on your device</div></div>
+      <div style="margin-bottom:6px"><div class="setting-label">Apps Script URL</div><div class="setting-sub">Your Google Sheets webhook — private, stored on-device only</div></div>
       <input id="settingScriptUrl" class="input" style="font-size:11px" placeholder="https://script.google.com/macros/s/.../exec" />
     </div>
     <div class="setting-row">
@@ -230,25 +319,21 @@
       <div><div class="setting-label">Fingerprint lock</div><div class="setting-sub">Privacy screen — not encryption</div></div>
       <label class="toggle-wrap"><input type="checkbox" id="settingLock"><span class="toggle-slider"></span></label>
     </div>
-
     <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#92400e">
-      ⚠️ The lock screen is a <strong>privacy curtain</strong>, not true encryption. It blocks casual viewing but not someone with technical browser access.
+      ⚠️ The lock screen is a <strong>privacy curtain</strong>, not encryption. It blocks casual viewing but not someone with browser console access.
     </div>
-
     <div class="setting-row">
-      <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV for Excel / Sheets</div></div>
+      <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV</div></div>
       <button onclick="exportCSV()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📤 CSV</button>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">Lock now</div><div class="setting-sub">Instantly lock without waiting</div></div>
+      <div><div class="setting-label">Lock now</div></div>
       <button onclick="lockNow()" style="padding:7px 12px;background:#334155;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔒 Lock</button>
     </div>
-
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #fee2e2">
       <div style="font-size:11px;color:#dc2626;font-weight:700;letter-spacing:0.05em;margin-bottom:8px">DANGER ZONE</div>
       <button onclick="startClearAll()" style="width:100%;padding:10px;background:#fff;border:1.5px solid #fca5a5;border-radius:8px;color:#dc2626;font-weight:600;font-size:13px;cursor:pointer">🗑 Clear All Data</button>
     </div>
-
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-dark" onclick="applySettings()">Save Settings</button>
       <button class="btn btn-light" onclick="hide('settingsModal')">Cancel</button>
@@ -256,14 +341,13 @@
   </div>
 </div>
 
-<!-- ── Clear All Step 1 ── -->
+<!-- Clear All Step 1 -->
 <div id="clearStep1" class="modal-bg hidden">
   <div class="modal">
     <div style="font-size:40px;text-align:center;margin-bottom:12px">⚠️</div>
     <div style="font-weight:700;font-size:17px;text-align:center;color:#dc2626;margin-bottom:8px">Are you certain?</div>
-    <div style="font-size:13px;color:#64748b;text-align:center;margin-bottom:6px">This will permanently delete:</div>
     <div id="clearSummary" style="font-size:13px;color:#475569;background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:16px;line-height:1.8"></div>
-    <div style="font-size:12px;font-weight:700;color:#dc2626;text-align:center;margin-bottom:14px">THIS ACTION CANNOT BE UNDONE</div>
+    <div style="font-size:12px;font-weight:700;color:#dc2626;text-align:center;margin-bottom:14px">THIS CANNOT BE UNDONE</div>
     <div class="row" style="margin-bottom:0">
       <button onclick="biometricClearAll()" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Yes, verify identity →</button>
       <button class="btn btn-light" onclick="hide('clearStep1')">Cancel</button>
@@ -271,24 +355,24 @@
   </div>
 </div>
 
-<!-- ── Clear All Step 3 (full screen, button at bottom) ── -->
+<!-- Clear All Step 3 -->
 <div id="clearStep3" class="hidden">
-  <div style="flex:0">
+  <div>
     <button onclick="hide('clearStep3')" style="background:#f1f5f9;border:none;border-radius:8px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer">← Cancel, keep my data</button>
     <div style="margin-top:32px;text-align:center">
       <div style="font-size:56px">🗑</div>
       <div style="font-size:20px;font-weight:700;color:#dc2626;margin-top:12px">Final Warning</div>
-      <div style="font-size:14px;color:#64748b;margin-top:10px;line-height:1.6">Identity verified. You're one tap away from deleting everything. If you changed your mind, tap Cancel above now.</div>
+      <div style="font-size:14px;color:#64748b;margin-top:10px;line-height:1.6">Identity verified. You're one tap away from deleting everything. Tap Cancel above if you changed your mind.</div>
     </div>
   </div>
   <div style="flex:1"></div>
   <div>
-    <div style="text-align:center;font-size:11px;font-weight:700;color:#dc2626;letter-spacing:0.05em;margin-bottom:10px">SCROLL DOWN — THIS CANNOT BE UNDONE</div>
+    <div style="text-align:center;font-size:11px;font-weight:700;color:#dc2626;letter-spacing:0.05em;margin-bottom:10px">THIS CANNOT BE UNDONE</div>
     <button onclick="executeClearAll()" style="width:100%;padding:18px;background:#dc2626;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:18px;cursor:pointer">Delete Everything</button>
   </div>
 </div>
 
-<!-- ── Maaser Partial Payment ── -->
+<!-- Maaser Partial Payment -->
 <div id="maaserPayModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:4px">🕍 Pay Maaser</div>
@@ -308,17 +392,13 @@
   </div>
 </div>
 
-<!-- ── Add Owed Maaser Modal ── -->
+<!-- Add Owed Maaser -->
 <div id="addMaaserModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">🕍 Add to Maaser Owed</div>
-    <div style="font-size:13px;color:#64748b;margin-bottom:14px">Use this to manually add to your Maaser total — e.g. cash income you received but didn't log as a transaction.</div>
-    <input id="addMaaserAmt" class="input" type="number" placeholder="Amount to add to owed" style="margin-bottom:8px" />
-    <div class="ac-wrap" style="margin-bottom:14px">
-      <input id="addMaaserNote" class="input" placeholder="Note (optional, e.g. Cash from grandma)" autocomplete="off" maxlength="100"
-        oninput="acInput('addMaaserNote','addMaaserAcDrop')" onfocus="acInput('addMaaserNote','addMaaserAcDrop')" />
-      <div id="addMaaserAcDrop" class="ac-dropdown hidden"></div>
-    </div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:14px">Manually add to your Maaser total — e.g. for cash income you received but didn't log.</div>
+    <input id="addMaaserAmt" class="input" type="number" placeholder="Amount to add" style="margin-bottom:8px" />
+    <input id="addMaaserNote" class="input" placeholder="Note (optional)" maxlength="100" style="margin-bottom:14px" />
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" style="background:#b45309" onclick="confirmAddMaaser()">Add to Owed</button>
       <button class="btn btn-light" onclick="hide('addMaaserModal')">Cancel</button>
@@ -326,7 +406,7 @@
   </div>
 </div>
 
-<!-- ── Add Pending Modal ── -->
+<!-- Add Pending -->
 <div id="addPendingModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:14px">⏳ Add to Pending Queue</div>
@@ -361,7 +441,7 @@
   </div>
 </div>
 
-<!-- ── Confirm Pending Modal ── -->
+<!-- Confirm Pending -->
 <div id="confirmPendingModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:4px">⏳ Confirm Transaction</div>
@@ -376,11 +456,11 @@
       <button id="cpConfirmBtn" class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="approvePending()">✓ Add to VBA</button>
       <button class="btn btn-light" onclick="hide('confirmPendingModal')">Cancel</button>
     </div>
-    <button onclick="dismissPending()" style="width:100%;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer">✕ Dismiss (not my charge)</button>
+    <button onclick="dismissPending()" style="width:100%;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer">✕ Dismiss</button>
   </div>
 </div>
 
-<!-- ── Import Modal ── -->
+<!-- Import -->
 <div id="importModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:6px">⬆ Bulk Import</div>
@@ -400,7 +480,7 @@
   </div>
 </div>
 
-<!-- ── Delete Confirm Modal ── -->
+<!-- Delete Confirm -->
 <div id="deleteModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:8px">🗑 Delete Transaction?</div>
@@ -414,7 +494,7 @@
   </div>
 </div>
 
-<!-- ── Edit Modal ── -->
+<!-- Edit Transaction -->
 <div id="editModal" class="modal-bg hidden">
   <div class="modal">
     <div style="font-weight:700;font-size:16px;margin-bottom:14px">✏️ Edit Transaction</div>
@@ -442,7 +522,7 @@
   </div>
 </div>
 
-<!-- ── Context Menu Sheet (long press) ── -->
+<!-- Context Menu Sheet -->
 <div id="ctxSheet" class="hidden" onclick="hide('ctxSheet')">
   <div class="sheet" onclick="event.stopPropagation()">
     <div id="ctxTitle" style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
@@ -453,7 +533,75 @@
   </div>
 </div>
 
-<!-- ── Calculator ── -->
+<!-- ── PORTFOLIO MODALS ── -->
+
+<!-- Add/Edit Investment -->
+<div id="addInvestmentModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px" id="investModalTitle">📈 Add Investment</div>
+    <input id="invName" class="input" placeholder="Name (e.g. VOO, BTC, AAPL)" maxlength="60" style="margin-bottom:8px" />
+    <select id="invBrokerage" class="input" style="margin-bottom:8px">
+      <option value="Robinhood">Robinhood</option>
+      <option value="Cash App">Cash App</option>
+      <option value="Fidelity">Fidelity</option>
+      <option value="Vanguard">Vanguard</option>
+      <option value="Schwab">Schwab</option>
+      <option value="Coinbase">Coinbase</option>
+      <option value="Other">Other</option>
+    </select>
+    <div class="row">
+      <input id="invAmountIn" class="input" type="number" placeholder="Amount invested ($)" min="0" style="flex:1" />
+      <input id="invDate" class="input" type="date" style="flex:1" />
+    </div>
+    <input id="invCurrentValue" class="input" type="number" placeholder="Current value (optional — shows P&L)" min="0" style="margin-bottom:8px" />
+    <input id="invNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:14px" />
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="saveInvestment()">Save</button>
+      <button class="btn btn-light" onclick="hide('addInvestmentModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Loan -->
+<div id="addLoanModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px" id="loanModalTitle">💸 Lend Money</div>
+    <input id="loanPerson" class="input" placeholder="Person's name" maxlength="60" style="margin-bottom:8px" />
+    <div class="row">
+      <input id="loanAmount" class="input" type="number" placeholder="Amount lent ($)" min="0" style="flex:1" />
+      <input id="loanDate" class="input" type="date" style="flex:1" />
+    </div>
+    <input id="loanDueDate" class="input" type="date" style="margin-bottom:8px" />
+    <div style="font-size:11px;color:#94a3b8;margin:-4px 0 8px 2px">Due date (optional)</div>
+    <input id="loanNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:14px" />
+    <div class="row" style="margin-bottom:0">
+      <button class="btn btn-dark" onclick="saveLoan()">Save</button>
+      <button class="btn btn-light" onclick="hide('addLoanModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Loan Payment -->
+<div id="loanPaymentModal" class="modal-bg hidden">
+  <div class="modal">
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px">💰 Record Payment</div>
+    <div id="loanPayPerson" style="font-size:13px;color:#64748b;margin-bottom:12px"></div>
+    <div style="font-size:12px;color:#f97316;font-weight:600;margin-bottom:8px">Outstanding: <span id="loanPayOutstanding"></span></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="setLoanPayAmt('full')" style="flex:1;padding:7px;border:2px solid #16a34a;border-radius:8px;background:#dcfce7;color:#16a34a;font-weight:600;font-size:12px;cursor:pointer">Full</button>
+      <button onclick="setLoanPayAmt('half')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Half</button>
+      <button onclick="setLoanPayAmt('custom')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Custom</button>
+    </div>
+    <input id="loanPayAmt" class="input" type="number" placeholder="Amount received" style="margin-bottom:10px" oninput="updateLoanPayPreview()" />
+    <div id="loanPayPreview" style="font-size:13px;color:#64748b;margin-bottom:14px;padding:10px;background:#f8fafc;border-radius:8px;display:none"></div>
+    <div class="row" style="margin-bottom:0">
+      <button class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="confirmLoanPayment()">Record Payment</button>
+      <button class="btn btn-light" onclick="hide('loanPaymentModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calculator -->
 <div id="calcScreen" class="hidden">
   <div class="calc-top">
     <button onclick="hide('calcScreen')" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
@@ -483,7 +631,7 @@
     <button class="calc-btn c-op" onclick="calcOp('+')">+</button>
     <button class="calc-btn c-num c-zero" onclick="calcInput('0')">0</button>
     <button class="calc-btn c-num" onclick="calcDot()">.</button>
-    <button class="calc-btn c-eq" onclick="calcEquals()">=</button>
+    <button class="calc-btn c-op" onclick="calcEquals()">=</button>
   </div>
   <button class="calc-use" onclick="useCalcAmount()">Use as Amount →</button>
 </div>
@@ -491,41 +639,41 @@
 <div id="toast" class="hidden"></div>
 
 <script>
-// ── Utilities ─────────────────────────────────────────────────────
-function esc(s) { const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
-function roundMoney(n) { return Math.round(n*100)/100; }
-function debounce(fn,ms) { let t; return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);}; }
-const debouncedSearch = debounce(()=>renderTxList(), 250);
+// ── Utilities ──────────────────────────────────────────────────────
+function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
+function roundMoney(n){return Math.round(n*100)/100;}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+const debouncedSearch=debounce(()=>renderTxList(),250);
 
-const STORAGE_KEY="vba_v3", SETTINGS_KEY="vba_settings", LOCK_KEY="vba_last_active";
+const STORAGE_KEY="vba_v3",SETTINGS_KEY="vba_settings",LOCK_KEY="vba_last_active";
 const LOCK_TIMEOUT=30*60*1000;
 
-// ── Settings ──────────────────────────────────────────────────────
-let settings = loadSettings();
-function loadSettings() {
-  try { const r=localStorage.getItem(SETTINGS_KEY); if(r) return JSON.parse(r); } catch {}
-  return { appName:"Virtual Bank Account", lockEnabled:true, maaserDefault:true, sheetsEnabled:true,
-    scriptUrl:"https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec" };
+// ── Settings ───────────────────────────────────────────────────────
+let settings=loadSettings();
+function loadSettings(){
+  try{const r=localStorage.getItem(SETTINGS_KEY);if(r)return JSON.parse(r);}catch{}
+  return{appName:"Virtual Bank Account",lockEnabled:true,maaserDefault:true,sheetsEnabled:true,
+    scriptUrl:"https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec"};
 }
-function saveSettings() { localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); }
-function openSettings() {
-  document.getElementById("settingAppName").value   = settings.appName||"";
-  document.getElementById("settingScriptUrl").value = settings.scriptUrl||"";
-  document.getElementById("settingSheets").checked  = !!settings.sheetsEnabled;
-  document.getElementById("settingMaaserDefault").checked = !!settings.maaserDefault;
-  document.getElementById("settingLock").checked    = !!settings.lockEnabled;
+function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}
+function openSettings(){
+  document.getElementById("settingAppName").value=settings.appName||"";
+  document.getElementById("settingScriptUrl").value=settings.scriptUrl||"";
+  document.getElementById("settingSheets").checked=!!settings.sheetsEnabled;
+  document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
+  document.getElementById("settingLock").checked=!!settings.lockEnabled;
   show("settingsModal");
 }
-function applySettings() {
-  settings.appName      = document.getElementById("settingAppName").value.trim()||"Virtual Bank Account";
-  settings.scriptUrl    = document.getElementById("settingScriptUrl").value.trim();
-  settings.sheetsEnabled= document.getElementById("settingSheets").checked;
-  settings.maaserDefault= document.getElementById("settingMaaserDefault").checked;
-  settings.lockEnabled  = document.getElementById("settingLock").checked;
+function applySettings(){
+  settings.appName=document.getElementById("settingAppName").value.trim()||"Virtual Bank Account";
+  settings.scriptUrl=document.getElementById("settingScriptUrl").value.trim();
+  settings.sheetsEnabled=document.getElementById("settingSheets").checked;
+  settings.maaserDefault=document.getElementById("settingMaaserDefault").checked;
+  settings.lockEnabled=document.getElementById("settingLock").checked;
   saveSettings();
   const val=parseFloat(document.getElementById("newBalanceInput").value);
   if(!isNaN(val)&&val>=0){
-    const txs=[...state.transactions].reverse(); let running=val;
+    const txs=[...state.transactions].reverse();let running=val;
     for(let i=0;i<txs.length;i++){running=roundMoney(running+txs[i].delta);txs[i].balance=running;}
     state.transactions=txs.reverse();
     state.balance=state.transactions.length>0?state.transactions[0].balance:val;
@@ -533,10 +681,10 @@ function applySettings() {
   }
   document.getElementById("appTitle").textContent="💳 "+settings.appName;
   document.getElementById("lockTitle").textContent=settings.appName;
-  hide("settingsModal"); render(); showToast("Settings saved ✓");
+  hide("settingsModal");render();showToast("Settings saved ✓");
 }
 
-// ── Biometric ─────────────────────────────────────────────────────
+// ── Biometric ──────────────────────────────────────────────────────
 const isPWA=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 let bioCredentialId=localStorage.getItem("vba_cred_id")||null;
 function stampActivity(){localStorage.setItem(LOCK_KEY,Date.now().toString());}
@@ -567,7 +715,7 @@ function lockNow(){hide("settingsModal");lock();}
 document.addEventListener("pointerdown",stampActivity);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&shouldLock())lock();});
 
-// ── Sheets ────────────────────────────────────────────────────────
+// ── Sheets ─────────────────────────────────────────────────────────
 function sendToSheet(data){
   if(!settings.sheetsEnabled||!settings.scriptUrl)return;
   data.timestamp=new Date().toISOString();data.lastKnownBalance=state.balance;
@@ -578,19 +726,24 @@ function sheetDelete(id){sendToSheet({id,action:'delete'});}
 function sheetEdit(tx){sendToSheet({...tx,action:'edit'});}
 function sheetSyncAll(){showToast("Sync sent ☁️");sendToSheet({action:'sync',transactions:state.transactions});}
 
-// ── State ─────────────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────
 let state=load();
+// Ensure new fields exist on old data
+if(!state.pending)    state.pending=[];
+if(!state.investments)state.investments=[];
+if(!state.loans)      state.loans=[];
+
 let formType="expense",formMaaser=true;
 let editId=null,editType="expense",editMaaser=false;
 let pendingDeleteId=null,pendingType="expense",pendingMaaser=false;
 let cpId=null,cpMaaser=true;
-let importOrder="topdown";
-let txFilter="all";
-let ctxId=null;
+let importOrder="topdown",txFilter="all",ctxId=null;
+let editingInvestmentId=null,editingLoanId=null,payingLoanId=null;
+let activeTab="ledger";
 
 function load(){
   try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch{}
-  return{balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[]};
+  return{balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[],investments:[],loans:[]};
 }
 function save(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
@@ -601,96 +754,94 @@ function today(){return new Date().toISOString().slice(0,10);}
 function show(id){document.getElementById(id).classList.remove("hidden");}
 function hide(id){document.getElementById(id).classList.add("hidden");}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");setTimeout(()=>t.classList.add("hidden"),3000);}
-if(!state.pending)state.pending=[];
 
-// ── Export CSV ────────────────────────────────────────────────────
+// ── Tab Switching ──────────────────────────────────────────────────
+function switchTab(tab){
+  activeTab=tab;
+  document.getElementById("ledgerView").classList.toggle("hidden",tab!=="ledger");
+  document.getElementById("portfolioView").classList.toggle("hidden",tab!=="portfolio");
+  document.getElementById("tabLedger").classList.toggle("active",tab==="ledger");
+  document.getElementById("tabPortfolio").classList.toggle("active",tab==="portfolio");
+  if(tab==="portfolio")renderPortfolio();
+}
+
+// ── Header / Net Worth ─────────────────────────────────────────────
+function updateHeader(){
+  const spendable=state.balance;
+  // Use current value for net worth if available, otherwise cost basis
+  const investedNW=roundMoney(state.investments.reduce((s,inv)=>s+(inv.currentValue!=null?inv.currentValue:inv.amountIn),0));
+  const investedIn=roundMoney(state.investments.reduce((s,inv)=>s+inv.amountIn,0));
+  const lentOut=roundMoney(state.loans.reduce((s,l)=>s+Math.max(0,l.amount-l.amountPaid),0));
+  const netWorth=roundMoney(spendable+investedNW+lentOut);
+
+  const nwEl=document.getElementById("netWorthDisplay");
+  nwEl.textContent=fmt(netWorth);nwEl.style.color=netWorth>=0?"#4ade80":"#f87171";
+
+  const bEl=document.getElementById("balanceDisplay");
+  bEl.textContent=fmt(spendable);bEl.style.color=spendable>=0?"#4ade80":"#f87171";
+
+  document.getElementById("investedDisplay").textContent=fmt(investedIn);
+  document.getElementById("lentOutDisplay").textContent=fmt(lentOut);
+}
+
+// ── Export CSV ─────────────────────────────────────────────────────
 function exportCSV(){
   if(!state.transactions.length){showToast("No transactions to export");return;}
-  const hdr=['Date','Description','Type','Amount','Balance','Maaser Amount'];
-  const rows=state.transactions.map(tx=>[
-    tx.date,
-    '"'+tx.desc.replace(/"/g,'""')+'"',
-    tx.type,
-    tx.type==='expense'?-tx.amount:tx.amount,
-    tx.balance,
-    tx.maaser?tx.maaserAmt:0
-  ]);
-  const csv=[hdr,...rows].map(r=>r.join(',')).join('\n');
-  const blob=new Blob([csv],{type:'text/csv'});
+  const hdr=["Date","Description","Type","Amount","Balance","Maaser Amount"];
+  const rows=state.transactions.map(tx=>[tx.date,'"'+tx.desc.replace(/"/g,'""')+'"',tx.type,tx.type==="expense"?-tx.amount:tx.amount,tx.balance,tx.maaser?tx.maaserAmt:0]);
+  const csv=[hdr,...rows].map(r=>r.join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;
-  a.download='VBA_'+today()+'.csv';
-  document.body.appendChild(a);a.click();
-  document.body.removeChild(a);URL.revokeObjectURL(url);
+  const a=document.createElement("a");a.href=url;a.download="VBA_"+today()+".csv";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   showToast("CSV downloaded ✓");
 }
 
-// ── Clear All ─────────────────────────────────────────────────────
+// ── Clear All ──────────────────────────────────────────────────────
 function startClearAll(){
   hide("settingsModal");
-  const n=state.transactions.length, p=state.pending.length;
+  const n=state.transactions.length,p=state.pending.length,i=state.investments.length,l=state.loans.length;
   document.getElementById("clearSummary").innerHTML=
-    `• ${n} transaction${n!==1?'s':''}<br>• ${p} pending item${p!==1?'s':''}<br>• All Maaser history`;
+    `• ${n} transaction${n!==1?"s":""}<br>• ${p} pending item${p!==1?"s":""}<br>• ${i} investment${i!==1?"s":""}<br>• ${l} loan record${l!==1?"s":""}`;
   show("clearStep1");
 }
 async function biometricClearAll(){
   hide("clearStep1");
-  if(!window.PublicKeyCredential||!bioCredentialId){
-    // No biometric — go straight to final screen
-    show("clearStep3"); return;
-  }
-  showToast("Verify fingerprint to continue...");
+  if(!window.PublicKeyCredential||!bioCredentialId){history.pushState({vba:"clearStep3"},"");show("clearStep3");return;}
+  showToast("Verify fingerprint...");
   const ok=await assertBiometric();
-  if(ok){ history.pushState({vba:'clearStep3'},''); show("clearStep3"); }
-  else { showToast("Fingerprint not recognised — clear all cancelled."); }
+  if(ok){history.pushState({vba:"clearStep3"},"");show("clearStep3");}
+  else showToast("Fingerprint not recognised — cancelled.");
 }
 function executeClearAll(){
-  state={balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[]};
-  invalidateAcCache();save();hide("clearStep3");render();showToast("All data cleared");
+  state={balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[],investments:[],loans:[]};
+  invalidateAcCache();save();hide("clearStep3");render();updateHeader();showToast("All data cleared");
 }
 
-// ── Add Owed Maaser ───────────────────────────────────────────────
-function openAddMaaserModal(){
-  document.getElementById("addMaaserAmt").value="";
-  document.getElementById("addMaaserNote").value="";
-  show("addMaaserModal");
-}
+// ── Add Owed Maaser ────────────────────────────────────────────────
+function openAddMaaserModal(){document.getElementById("addMaaserAmt").value="";document.getElementById("addMaaserNote").value="";show("addMaaserModal");}
 function confirmAddMaaser(){
   const amt=roundMoney(parseFloat(document.getElementById("addMaaserAmt").value));
   if(isNaN(amt)||amt<=0){showToast("Please enter a valid amount");return;}
-  state.maaserOwed=roundMoney(state.maaserOwed+amt);
-  state.maaserEverPaid=false;
-  save();hide("addMaaserModal");render();
-  showToast(fmt(amt)+" added to Maaser owed");
+  state.maaserOwed=roundMoney(state.maaserOwed+amt);state.maaserEverPaid=false;
+  save();hide("addMaaserModal");render();showToast(fmt(amt)+" added to Maaser owed");
 }
 
-// ── Long Press Context Menu ───────────────────────────────────────
+// ── Long Press ─────────────────────────────────────────────────────
 let _lpTimer=null,_lpId=null;
-function lpStart(id,e){
-  _lpId=id;
-  _lpTimer=setTimeout(()=>{
-    _lpTimer=null;
-    if(navigator.vibrate)navigator.vibrate(50);
-    openCtxMenu(id);
-  },600);
-}
+function lpStart(id,e){_lpId=id;_lpTimer=setTimeout(()=>{_lpTimer=null;if(navigator.vibrate)navigator.vibrate(50);openCtxMenu(id);},600);}
 function lpEnd(){if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}}
 function openCtxMenu(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx)return;
-  ctxId=id;
-  document.getElementById("ctxTitle").textContent=tx.desc;
+  ctxId=id;document.getElementById("ctxTitle").textContent=tx.desc;
   document.getElementById("ctxStarLabel").textContent=tx.starred?"Unstar":"Star transaction";
   show("ctxSheet");
 }
-function ctxStar(){
-  const tx=state.transactions.find(t=>t.id===ctxId);if(!tx)return;
-  tx.starred=!tx.starred;save();hide("ctxSheet");render();
-  showToast(tx.starred?"⭐ Starred":"Star removed");
-}
+function ctxStar(){const tx=state.transactions.find(t=>t.id===ctxId);if(!tx)return;tx.starred=!tx.starred;save();hide("ctxSheet");render();showToast(tx.starred?"⭐ Starred":"Star removed");}
 function ctxEdit(){hide("ctxSheet");openEdit(ctxId);}
 function ctxDelete(){hide("ctxSheet");openDeleteModal(ctxId);}
 
-// ── Transaction Filter ────────────────────────────────────────────
+// ── Transaction Filter ─────────────────────────────────────────────
 function setTxFilter(f){
   txFilter=f;
   document.getElementById("filterAllBtn").className="filter-tab"+(f==="all"?" active":"");
@@ -698,31 +849,17 @@ function setTxFilter(f){
   renderTxList();
 }
 
-// ── Autocomplete Cache ────────────────────────────────────────────
+// ── Autocomplete Cache ─────────────────────────────────────────────
 let _acCache=null;
 function invalidateAcCache(){_acCache=null;}
 function getAcCache(){
-  if(_acCache)return _acCache;
-  _acCache={};
-  for(const tx of state.transactions){
-    const key=tx.desc.trim();if(!key)continue;
-    if(!_acCache[key])_acCache[key]={type:tx.type,lastDate:tx.date,count:0};
-    _acCache[key].count++;
-    if(tx.date>_acCache[key].lastDate){_acCache[key].lastDate=tx.date;_acCache[key].type=tx.type;}
-  }
+  if(_acCache)return _acCache;_acCache={};
+  for(const tx of state.transactions){const key=tx.desc.trim();if(!key)continue;if(!_acCache[key])_acCache[key]={type:tx.type,lastDate:tx.date,count:0};_acCache[key].count++;if(tx.date>_acCache[key].lastDate){_acCache[key].lastDate=tx.date;_acCache[key].type=tx.type;}}
   return _acCache;
 }
 function getSuggestions(query){
-  if(!query||query.length<1)return[];
-  const q=query.toLowerCase(),map=getAcCache();
-  return Object.entries(map)
-    .filter(([d])=>d.toLowerCase().includes(q))
-    .sort((a,b)=>{
-      const aS=a[0].toLowerCase().startsWith(q),bS=b[0].toLowerCase().startsWith(q);
-      if(aS!==bS)return aS?-1:1;
-      if(b[1].lastDate!==a[1].lastDate)return b[1].lastDate.localeCompare(a[1].lastDate);
-      return b[1].count-a[1].count;
-    }).slice(0,6).map(([d,m])=>({desc:d,type:m.type,count:m.count}));
+  if(!query||query.length<1)return[];const q=query.toLowerCase(),map=getAcCache();
+  return Object.entries(map).filter(([d])=>d.toLowerCase().includes(q)).sort((a,b)=>{const aS=a[0].toLowerCase().startsWith(q),bS=b[0].toLowerCase().startsWith(q);if(aS!==bS)return aS?-1:1;if(b[1].lastDate!==a[1].lastDate)return b[1].lastDate.localeCompare(a[1].lastDate);return b[1].count-a[1].count;}).slice(0,6).map(([d,m])=>({desc:d,type:m.type,count:m.count}));
 }
 let acActiveIdx=-1;
 function acInput(inputId,dropId){
@@ -732,18 +869,9 @@ function acInput(inputId,dropId){
   drop.innerHTML=s.map((sg,i)=>`<div class="ac-item" id="ac-${dropId}-${i}" onmousedown="acSelect('${inputId}','${dropId}',${i})" onmouseover="acHover('${dropId}',${i})"><span class="ac-label">${acHighlight(sg.desc,val)}</span><span class="ac-type ${esc(sg.type)}">${esc(sg.type)}</span><span class="ac-meta">${esc(sg.count)}×</span></div>`).join("");
   drop.classList.remove("hidden");
 }
-function acHighlight(desc,query){
-  const sd=esc(desc),sq=esc(query),idx=sd.toLowerCase().indexOf(sq.toLowerCase());
-  if(idx===-1)return sd;
-  return sd.slice(0,idx)+`<strong>${sd.slice(idx,idx+sq.length)}</strong>`+sd.slice(idx+sq.length);
-}
+function acHighlight(desc,query){const sd=esc(desc),sq=esc(query),idx=sd.toLowerCase().indexOf(sq.toLowerCase());if(idx===-1)return sd;return sd.slice(0,idx)+`<strong>${sd.slice(idx,idx+sq.length)}</strong>`+sd.slice(idx+sq.length);}
 function acHover(dropId,idx){acActiveIdx=idx;document.querySelectorAll(`#${dropId} .ac-item`).forEach((el,i)=>el.classList.toggle("active",i===idx));}
-function acSelect(inputId,dropId,idx){
-  const drop=document.getElementById(dropId),items=drop.querySelectorAll(".ac-item .ac-label");if(!items[idx])return;
-  const tmp=document.createElement("div");tmp.innerHTML=items[idx].innerHTML;
-  document.getElementById(inputId).value=tmp.textContent;
-  drop.classList.add("hidden");drop.innerHTML="";acActiveIdx=-1;
-}
+function acSelect(inputId,dropId,idx){const drop=document.getElementById(dropId),items=drop.querySelectorAll(".ac-item .ac-label");if(!items[idx])return;const tmp=document.createElement("div");tmp.innerHTML=items[idx].innerHTML;document.getElementById(inputId).value=tmp.textContent;drop.classList.add("hidden");drop.innerHTML="";acActiveIdx=-1;}
 function acKeydown(e,dropId,inputId){
   const drop=document.getElementById(dropId);if(drop.classList.contains("hidden"))return;
   const items=drop.querySelectorAll(".ac-item");
@@ -752,10 +880,10 @@ function acKeydown(e,dropId,inputId){
   else if(e.key==="Enter"&&acActiveIdx>=0){e.preventDefault();const l=items[acActiveIdx].querySelector(".ac-label");const tmp=document.createElement("div");tmp.innerHTML=l.innerHTML;document.getElementById(inputId).value=tmp.textContent;drop.classList.add("hidden");drop.innerHTML="";acActiveIdx=-1;}
   else if(e.key==="Escape"){drop.classList.add("hidden");drop.innerHTML="";acActiveIdx=-1;}
 }
-function closeAllDropdowns(){["formAcDrop","editAcDrop","pendingAcDrop","addMaaserAcDrop"].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.add("hidden");el.innerHTML="";}});acActiveIdx=-1;}
+function closeAllDropdowns(){["formAcDrop","editAcDrop","pendingAcDrop"].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.add("hidden");el.innerHTML="";}});acActiveIdx=-1;}
 document.addEventListener("pointerdown",e=>{if(!e.target.closest(".ac-wrap")&&!e.target.closest(".ac-dropdown"))closeAllDropdowns();});
 
-// ── Import Order ──────────────────────────────────────────────────
+// ── Import Order ───────────────────────────────────────────────────
 function setImportOrder(o){
   importOrder=o;
   const on="padding:5px 10px;border-radius:6px;border:1.5px solid #1e293b;background:#1e293b;color:#fff;font-size:11px;font-weight:600;cursor:pointer";
@@ -765,69 +893,37 @@ function setImportOrder(o){
   document.getElementById("importOrderDesc").textContent=o==="topdown"?"First line ends up on top":"Last line ends up on top";
 }
 
-// ── Maaser Partial Payment ────────────────────────────────────────
-function openMaaserPayModal(){
-  document.getElementById("maaserTotalOwed").textContent=fmt(state.maaserOwed);
-  document.getElementById("maaserPayInput").value=state.maaserOwed.toFixed(2);
-  document.getElementById("maaserPayPreview").style.display="none";
-  show("maaserPayModal");onMaaserPayInput();
-}
-function setMaaserPayAmt(t){
-  if(t==="full")document.getElementById("maaserPayInput").value=state.maaserOwed.toFixed(2);
-  if(t==="half")document.getElementById("maaserPayInput").value=(state.maaserOwed/2).toFixed(2);
-  if(t==="custom")document.getElementById("maaserPayInput").value="";
-  onMaaserPayInput();
-}
-function onMaaserPayInput(){
-  const amt=parseFloat(document.getElementById("maaserPayInput").value);
-  const p=document.getElementById("maaserPayPreview");
-  if(isNaN(amt)||amt<=0){p.style.display="none";return;}
-  const remaining=roundMoney(Math.max(0,state.maaserOwed-amt));
-  p.style.display="block";
-  p.innerHTML=`Paying <strong>${esc(fmt(amt))}</strong> · Remaining: <strong>${esc(fmt(remaining))}</strong>`;
-}
+// ── Maaser Partial Payment ─────────────────────────────────────────
+function openMaaserPayModal(){document.getElementById("maaserTotalOwed").textContent=fmt(state.maaserOwed);document.getElementById("maaserPayInput").value=state.maaserOwed.toFixed(2);document.getElementById("maaserPayPreview").style.display="none";show("maaserPayModal");onMaaserPayInput();}
+function setMaaserPayAmt(t){if(t==="full")document.getElementById("maaserPayInput").value=state.maaserOwed.toFixed(2);if(t==="half")document.getElementById("maaserPayInput").value=(state.maaserOwed/2).toFixed(2);if(t==="custom")document.getElementById("maaserPayInput").value="";onMaaserPayInput();}
+function onMaaserPayInput(){const amt=parseFloat(document.getElementById("maaserPayInput").value),p=document.getElementById("maaserPayPreview");if(isNaN(amt)||amt<=0){p.style.display="none";return;}const remaining=roundMoney(Math.max(0,state.maaserOwed-amt));p.style.display="block";p.innerHTML=`Paying <strong>${esc(fmt(amt))}</strong> · Remaining: <strong>${esc(fmt(remaining))}</strong>`;}
 function confirmPartialMaaser(){
   const amt=roundMoney(parseFloat(document.getElementById("maaserPayInput").value));
   if(isNaN(amt)||amt<=0){showToast("Please enter a valid amount");return;}
   if(amt>state.maaserOwed+0.001){showToast("Amount exceeds what's owed");return;}
   const tx={id:Date.now(),type:"expense",desc:"🕍 Maaser Payment",amount:amt,delta:-amt,date:today(),balance:roundMoney(state.balance-amt),maaser:false,maaserAmt:0};
-  state.transactions.unshift(tx);
-  state.balance=roundMoney(state.balance-amt);
-  state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-amt));
+  state.transactions.unshift(tx);state.balance=roundMoney(state.balance-amt);state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-amt));
   if(state.maaserOwed<0.01){state.transactions=state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));state.maaserOwed=0;state.maaserEverPaid=true;}
   invalidateAcCache();sheetAdd(tx);hide("maaserPayModal");render();
   showToast(state.maaserOwed>0?`Paid ${fmt(amt)} · ${fmt(state.maaserOwed)} still owed`:"Maaser fully paid ✓");
 }
 
-// ── Pending Queue ─────────────────────────────────────────────────
-function setPendingType(type){
-  pendingType=type;
-  document.getElementById("pendingTypeIncome").className="type-btn income"+(type==="income"?" active":"");
-  document.getElementById("pendingTypeExpense").className="type-btn expense"+(type==="expense"?" active":"");
-  const mr=document.getElementById("pendingMaaserRow");
-  if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
-}
+// ── Pending Queue ──────────────────────────────────────────────────
+function setPendingType(type){pendingType=type;document.getElementById("pendingTypeIncome").className="type-btn income"+(type==="income"?" active":"");document.getElementById("pendingTypeExpense").className="type-btn expense"+(type==="expense"?" active":"");const mr=document.getElementById("pendingMaaserRow");if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}}
 function togglePendingMaaser(){pendingMaaser=!pendingMaaser;document.getElementById("pendingMaaserCheck").className="checkbox"+(pendingMaaser?" checked":"");}
 function addToPending(){
-  const desc=document.getElementById("pendingDesc").value.trim();
-  const amt=roundMoney(parseFloat(document.getElementById("pendingAmount").value));
-  const source=document.getElementById("pendingSource").value;
-  const date=document.getElementById("pendingDate").value||today();
+  const desc=document.getElementById("pendingDesc").value.trim(),amt=roundMoney(parseFloat(document.getElementById("pendingAmount").value)),source=document.getElementById("pendingSource").value,date=document.getElementById("pendingDate").value||today();
   if(isNaN(amt)||amt<=0){showToast("Please enter a valid amount");return;}
   state.pending.push({id:Date.now(),type:pendingType,desc:desc||(pendingType==="income"?"Income":"Expense"),amount:amt,source:source||"",date,maaser:pendingType==="income"&&pendingMaaser});
-  save();
-  document.getElementById("pendingDesc").value="";document.getElementById("pendingAmount").value="";
-  document.getElementById("pendingSource").value="";document.getElementById("pendingDate").value="";
-  pendingMaaser=false;document.getElementById("pendingMaaserCheck").className="checkbox";
-  setPendingType("expense");hide("addPendingModal");renderPending();showToast("Added to pending queue");
+  save();document.getElementById("pendingDesc").value="";document.getElementById("pendingAmount").value="";document.getElementById("pendingSource").value="";document.getElementById("pendingDate").value="";
+  pendingMaaser=false;document.getElementById("pendingMaaserCheck").className="checkbox";setPendingType("expense");hide("addPendingModal");renderPending();showToast("Added to pending queue");
 }
 function openConfirmPending(id){
   const item=state.pending.find(p=>p.id===id);if(!item)return;
   cpId=id;cpMaaser=item.maaser!=null?item.maaser:item.type==="income";
   document.getElementById("cpSource").textContent=item.source?`From: ${item.source}`:"";
   document.getElementById("cpDesc").textContent=item.desc;
-  const ae=document.getElementById("cpAmt");
-  ae.textContent=(item.type==="income"?"+":"−")+fmt(item.amount);ae.style.color=item.type==="income"?"#16a34a":"#dc2626";
+  const ae=document.getElementById("cpAmt");ae.textContent=(item.type==="income"?"+":"−")+fmt(item.amount);ae.style.color=item.type==="income"?"#16a34a":"#dc2626";
   document.getElementById("cpMaaserRow").style.display=item.type==="income"?"flex":"none";
   document.getElementById("cpMaaserCheck").className="checkbox"+(cpMaaser?" checked":"");
   document.getElementById("cpConfirmBtn").style.background=item.type==="income"?"#16a34a":"#dc2626";
@@ -848,8 +944,7 @@ function dismissPending(){state.pending=state.pending.filter(p=>p.id!==cpId);cpI
 function dismissAllPending(){state.pending=[];save();renderPending();showToast("All pending items dismissed");}
 function quickApprovePending(id,withMaaser){
   const item=state.pending.find(p=>p.id===id);if(!item)return;
-  const useMaaser=item.type==="income"&&withMaaser;
-  const delta=item.type==="income"?item.amount:-item.amount;
+  const useMaaser=item.type==="income"&&withMaaser,delta=item.type==="income"?item.amount:-item.amount;
   const maaserAmt=useMaaser?roundMoney(item.amount*0.1):0;
   const tx={id:Date.now(),type:item.type,desc:item.desc+(item.source?` (${item.source})`:""),amount:item.amount,delta,date:item.date,balance:roundMoney(state.balance+delta),maaser:useMaaser,maaserAmt};
   state.transactions.unshift(tx);state.balance=roundMoney(state.balance+delta);state.maaserOwed=roundMoney(state.maaserOwed+maaserAmt);
@@ -865,8 +960,7 @@ function renderPending(){
   list.innerHTML=state.pending.map(item=>`
     <div class="pending-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div><div style="font-weight:600;font-size:14px">${esc(item.desc)}</div>
-        <div style="font-size:11px;color:#94a3b8">${esc(item.date)}${item.source?" · "+esc(item.source):""}</div></div>
+        <div><div style="font-weight:600;font-size:14px">${esc(item.desc)}</div><div style="font-size:11px;color:#94a3b8">${esc(item.date)}${item.source?" · "+esc(item.source):""}</div></div>
         <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#16a34a":"#dc2626"}">${item.type==="income"?"+":"−"}${esc(fmt(item.amount))}</div>
       </div>
       ${item.type==="income"?`<div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;cursor:pointer" onclick="togglePendingItemMaaser(${item.id})"><div class="small-check ${item.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${item.maaser?"✓":""}</span></div><span style="font-size:11px;color:${item.maaser?"#b45309":"#94a3b8"}">${item.maaser?"Count for Maaser ✓":"Count for Maaser"}</span></div>`:""}
@@ -878,11 +972,10 @@ function renderPending(){
     </div>`).join("");
 }
 
-// ── Bulk Import ───────────────────────────────────────────────────
+// ── Bulk Import ────────────────────────────────────────────────────
 function runBulkImport(){
   const rawData=document.getElementById("importBox").value;if(!rawData.trim())return;
-  let lines=rawData.trim().split('\n');
-  if(importOrder==="bottomup")lines=lines.reverse();
+  let lines=rawData.trim().split('\n');if(importOrder==="bottomup")lines=lines.reverse();
   const baseTime=Date.now();let importedCount=0,skippedCount=0;
   lines.forEach((line,index)=>{
     const match=line.trim().match(/^([+-])\$?([\d.]+)(?:\s+(.+))?$/);
@@ -897,70 +990,243 @@ function runBulkImport(){
       importedCount++;
     }else if(line.trim())skippedCount++;
   });
-  if(importedCount>0){
-    recalcBalances();invalidateAcCache();render();hide('importModal');document.getElementById("importBox").value="";
-    const msg=skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?'s':''}`:`Imported ${importedCount} transaction${importedCount>1?'s':''}!`;
-    showToast(msg);
-  }else{alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');}
+  if(importedCount>0){recalcBalances();invalidateAcCache();render();hide('importModal');document.getElementById("importBox").value="";showToast(skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?"s":""}`:`Imported ${importedCount} transaction${importedCount>1?"s":""}!`);}
+  else alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
 }
 
-// ── Render ────────────────────────────────────────────────────────
+// ── Portfolio: Investments ─────────────────────────────────────────
+function openAddInvestment(){
+  editingInvestmentId=null;
+  document.getElementById("investModalTitle").textContent="📈 Add Investment";
+  document.getElementById("invName").value="";document.getElementById("invBrokerage").value="Robinhood";
+  document.getElementById("invAmountIn").value="";document.getElementById("invCurrentValue").value="";
+  document.getElementById("invDate").value=today();document.getElementById("invNotes").value="";
+  show("addInvestmentModal");
+}
+function openEditInvestment(id){
+  const inv=state.investments.find(i=>i.id===id);if(!inv)return;
+  editingInvestmentId=id;
+  document.getElementById("investModalTitle").textContent="✏️ Edit Investment";
+  document.getElementById("invName").value=inv.name;document.getElementById("invBrokerage").value=inv.brokerage;
+  document.getElementById("invAmountIn").value=inv.amountIn;document.getElementById("invCurrentValue").value=inv.currentValue??'';
+  document.getElementById("invDate").value=inv.date;document.getElementById("invNotes").value=inv.notes||"";
+  show("addInvestmentModal");
+}
+function saveInvestment(){
+  const name=document.getElementById("invName").value.trim(),brokerage=document.getElementById("invBrokerage").value;
+  const amountIn=roundMoney(parseFloat(document.getElementById("invAmountIn").value));
+  const cvRaw=document.getElementById("invCurrentValue").value;
+  const currentValue=cvRaw?roundMoney(parseFloat(cvRaw)):null;
+  const date=document.getElementById("invDate").value,notes=document.getElementById("invNotes").value.trim();
+  if(!name||isNaN(amountIn)||amountIn<=0){showToast("Please enter a name and amount");return;}
+  if(editingInvestmentId){
+    const inv=state.investments.find(i=>i.id===editingInvestmentId);
+    if(inv){inv.name=name;inv.brokerage=brokerage;inv.amountIn=amountIn;inv.currentValue=currentValue;inv.date=date;inv.notes=notes;}
+  }else{
+    state.investments.push({id:Date.now(),name,brokerage,amountIn,currentValue,date,notes});
+  }
+  save();hide("addInvestmentModal");renderPortfolio();updateHeader();
+  showToast(editingInvestmentId?"Investment updated ✓":"Investment added ✓");editingInvestmentId=null;
+}
+function deleteInvestment(id){
+  if(!confirm("Delete this investment?"))return;
+  state.investments=state.investments.filter(i=>i.id!==id);
+  save();renderPortfolio();updateHeader();showToast("Investment deleted");
+}
+function renderInvestments(){
+  const list=document.getElementById("investmentList"),summary=document.getElementById("investSummary");
+  const totalIn=roundMoney(state.investments.reduce((s,inv)=>s+inv.amountIn,0));
+  const totalCurr=roundMoney(state.investments.reduce((s,inv)=>s+(inv.currentValue??inv.amountIn),0));
+  const totalPL=roundMoney(totalCurr-totalIn);
+  // Portfolio overview bar
+  document.getElementById("ovCostBasis").textContent=fmt(totalIn);
+  document.getElementById("ovCurrValue").textContent=fmt(totalCurr);
+  const plEl=document.getElementById("ovPL");
+  if(state.investments.some(i=>i.currentValue!=null)){
+    plEl.textContent=(totalPL>=0?"+":"")+fmt(totalPL);
+    plEl.style.color=totalPL>=0?"#16a34a":"#dc2626";
+  }else{plEl.textContent="—";plEl.style.color="#94a3b8";}
+  if(state.investments.length===0){summary.textContent="Nothing tracked yet";list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px 0;font-size:13px">No investments yet. Tap + Add to track one.</div>';return;}
+  summary.innerHTML=`${fmt(totalIn)} invested${totalPL!==0&&state.investments.some(i=>i.currentValue!=null)?` · <span style="color:${totalPL>=0?"#16a34a":"#dc2626"}">${totalPL>=0?"+":""}${fmt(totalPL)} P&L</span>`:""}`;
+  list.innerHTML=[...state.investments].sort((a,b)=>b.date.localeCompare(a.date)).map(inv=>{
+    const pl=inv.currentValue!=null?roundMoney(inv.currentValue-inv.amountIn):null;
+    const plPct=pl!=null&&inv.amountIn>0?((pl/inv.amountIn)*100).toFixed(1):null;
+    const plColor=pl>=0?"#16a34a":"#dc2626";
+    return`<div class="inv-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📈</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">${esc(inv.name)}</div>
+          <div style="font-size:11px;color:#64748b">${esc(inv.brokerage)} · ${esc(inv.date)}</div>
+        </div>
+        ${pl!=null?`<div style="text-align:right;flex-shrink:0"><div style="font-weight:700;font-size:14px;color:${plColor}">${pl>=0?"+":""}${esc(fmt(pl))}</div><div style="font-size:11px;color:${plColor}">${pl>=0?"↑":"↓"}${esc(plPct)}%</div></div>`:""}
+      </div>
+      <div style="display:flex;gap:0;background:#fff;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;font-size:12px;margin-bottom:6px">
+        <div style="flex:1;padding:8px;text-align:center;border-right:1px solid #e2e8f0">
+          <div style="color:#64748b;font-size:10px;font-weight:600">INVESTED</div>
+          <div style="font-weight:600">${esc(fmt(inv.amountIn))}</div>
+        </div>
+        <div style="flex:1;padding:8px;text-align:center">
+          <div style="color:#64748b;font-size:10px;font-weight:600">CURR VALUE</div>
+          <div style="font-weight:600;color:${inv.currentValue!=null?(pl>=0?"#16a34a":"#dc2626"):"#94a3b8"}">${inv.currentValue!=null?esc(fmt(inv.currentValue)):"—"}</div>
+        </div>
+      </div>
+      ${inv.notes?`<div style="font-size:11px;color:#64748b;margin-bottom:6px">${esc(inv.notes)}</div>`:""}
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="openEditInvestment(${inv.id})" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer">edit</button>
+        <button onclick="deleteInvestment(${inv.id})" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer">delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Portfolio: Loans ───────────────────────────────────────────────
+function openAddLoan(){
+  editingLoanId=null;document.getElementById("loanModalTitle").textContent="💸 Lend Money";
+  document.getElementById("loanPerson").value="";document.getElementById("loanAmount").value="";
+  document.getElementById("loanDate").value=today();document.getElementById("loanDueDate").value="";
+  document.getElementById("loanNotes").value="";show("addLoanModal");
+}
+function openEditLoan(id){
+  const loan=state.loans.find(l=>l.id===id);if(!loan)return;
+  editingLoanId=id;document.getElementById("loanModalTitle").textContent="✏️ Edit Loan";
+  document.getElementById("loanPerson").value=loan.person;document.getElementById("loanAmount").value=loan.amount;
+  document.getElementById("loanDate").value=loan.date;document.getElementById("loanDueDate").value=loan.dueDate||"";
+  document.getElementById("loanNotes").value=loan.notes||"";show("addLoanModal");
+}
+function saveLoan(){
+  const person=document.getElementById("loanPerson").value.trim();
+  const amount=roundMoney(parseFloat(document.getElementById("loanAmount").value));
+  const date=document.getElementById("loanDate").value;
+  const dueDate=document.getElementById("loanDueDate").value;
+  const notes=document.getElementById("loanNotes").value.trim();
+  if(!person||isNaN(amount)||amount<=0){showToast("Please enter a name and amount");return;}
+  if(editingLoanId){
+    const loan=state.loans.find(l=>l.id===editingLoanId);
+    if(loan){loan.person=person;loan.amount=amount;loan.date=date;loan.dueDate=dueDate;loan.notes=notes;}
+  }else{
+    state.loans.push({id:Date.now(),person,amount,amountPaid:0,date,dueDate:dueDate||"",notes});
+  }
+  save();hide("addLoanModal");renderPortfolio();updateHeader();
+  showToast(editingLoanId?"Loan updated ✓":"Loan added ✓");editingLoanId=null;
+}
+function deleteLoan(id){
+  if(!confirm("Delete this loan record?"))return;
+  state.loans=state.loans.filter(l=>l.id!==id);
+  save();renderPortfolio();updateHeader();showToast("Loan deleted");
+}
+function openLoanPayment(id){
+  const loan=state.loans.find(l=>l.id===id);if(!loan)return;
+  payingLoanId=id;
+  const outstanding=roundMoney(loan.amount-loan.amountPaid);
+  document.getElementById("loanPayPerson").textContent=`Recording payment from ${loan.person}`;
+  document.getElementById("loanPayOutstanding").textContent=fmt(outstanding);
+  document.getElementById("loanPayAmt").value=outstanding.toFixed(2);
+  document.getElementById("loanPayPreview").style.display="none";
+  show("loanPaymentModal");updateLoanPayPreview();
+}
+function setLoanPayAmt(type){
+  const loan=state.loans.find(l=>l.id===payingLoanId);if(!loan)return;
+  const outstanding=roundMoney(loan.amount-loan.amountPaid);
+  if(type==="full")document.getElementById("loanPayAmt").value=outstanding.toFixed(2);
+  if(type==="half")document.getElementById("loanPayAmt").value=(outstanding/2).toFixed(2);
+  if(type==="custom")document.getElementById("loanPayAmt").value="";
+  updateLoanPayPreview();
+}
+function updateLoanPayPreview(){
+  const loan=state.loans.find(l=>l.id===payingLoanId);if(!loan)return;
+  const amt=parseFloat(document.getElementById("loanPayAmt").value),preview=document.getElementById("loanPayPreview");
+  if(isNaN(amt)||amt<=0){preview.style.display="none";return;}
+  const outstanding=roundMoney(loan.amount-loan.amountPaid),remaining=roundMoney(Math.max(0,outstanding-amt));
+  preview.style.display="block";
+  preview.innerHTML=`Receiving <strong>${esc(fmt(amt))}</strong> · ${remaining===0?'<span style="color:#16a34a">Fully paid! 🎉</span>':"Remaining: <strong>"+esc(fmt(remaining))+"</strong>"}`;
+}
+function confirmLoanPayment(){
+  const loan=state.loans.find(l=>l.id===payingLoanId);if(!loan)return;
+  const amt=roundMoney(parseFloat(document.getElementById("loanPayAmt").value));
+  const outstanding=roundMoney(loan.amount-loan.amountPaid);
+  if(isNaN(amt)||amt<=0){showToast("Enter a valid amount");return;}
+  if(amt>outstanding+0.001){showToast("Amount exceeds what's outstanding");return;}
+  loan.amountPaid=roundMoney(loan.amountPaid+amt);
+  save();hide("loanPaymentModal");renderPortfolio();updateHeader();
+  showToast(loan.amountPaid>=loan.amount?`${loan.person} fully paid up! 🎉`:`${fmt(amt)} recorded · ${fmt(roundMoney(loan.amount-loan.amountPaid))} left`);
+  payingLoanId=null;
+}
+function renderLoans(){
+  const list=document.getElementById("loanList"),summary=document.getElementById("loanSummary");
+  const totalOut=roundMoney(state.loans.reduce((s,l)=>s+Math.max(0,l.amount-l.amountPaid),0));
+  const activeLoans=state.loans.filter(l=>l.amountPaid<l.amount).length;
+  summary.textContent=activeLoans>0?`${fmt(totalOut)} outstanding from ${activeLoans} loan${activeLoans>1?"s":""}`:state.loans.length>0?"All paid up! 🎉":"Nothing lent out";
+  if(state.loans.length===0){list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px 0;font-size:13px">No loans tracked. Tap + Add to record one.</div>';return;}
+  const sorted=[...state.loans].sort((a,b)=>{const aO=a.amount-a.amountPaid,bO=b.amount-b.amountPaid;if(bO!==aO)return bO-aO;return b.date.localeCompare(a.date);});
+  list.innerHTML=sorted.map(loan=>{
+    const outstanding=roundMoney(loan.amount-loan.amountPaid);
+    const paidPct=Math.min(100,Math.round((loan.amountPaid/loan.amount)*100));
+    const isPaid=outstanding<=0,isOverdue=loan.dueDate&&loan.dueDate<today()&&!isPaid;
+    return`<div class="loan-card ${isOverdue?"overdue":""} ${isPaid?"paid":""}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${isPaid?"#dcfce7":"#fef3c7"};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${isPaid?"✅":"👤"}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">${esc(loan.person)}</div>
+          <div style="font-size:11px;color:#64748b">Lent ${esc(fmt(loan.amount))} on ${esc(loan.date)}${loan.dueDate?" · due "+esc(loan.dueDate):""}${isOverdue?' <span style="color:#dc2626;font-weight:700">OVERDUE</span>':""}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:15px;color:${isPaid?"#16a34a":"#f97316"}">${isPaid?"Paid":esc(fmt(outstanding))}</div>
+          ${isPaid?"":"<div style='font-size:10px;color:#94a3b8'>outstanding</div>"}
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${paidPct}%;background:${isPaid?"#16a34a":"#f97316"}"></div></div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px">${paidPct}% paid back${loan.notes?" · "+esc(loan.notes):""}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${!isPaid?`<button onclick="openLoanPayment(${loan.id})" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💰 Record Payment</button>`:""}
+        <button onclick="openEditLoan(${loan.id})" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer;padding:4px">edit</button>
+        <button onclick="deleteLoan(${loan.id})" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:4px">delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function renderPortfolio(){renderInvestments();renderLoans();}
+
+// ── Render ─────────────────────────────────────────────────────────
 function render(){
-  const bal=state.balance,balEl=document.getElementById("balanceDisplay");
-  balEl.textContent=fmt(bal);balEl.style.color=bal>=0?"#4ade80":"#f87171";
-  const tIn=state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
-  const tOut=state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
-  document.getElementById("totalIn").textContent="+"+fmt(tIn);
-  document.getElementById("totalOut").textContent="-"+fmt(tOut);
+  updateHeader();
   const mo=state.maaserOwed;
   document.getElementById("maaserDisplay").textContent=fmt(mo);
   document.getElementById("maaserDisplay").style.color=mo>0?"#b45309":"#16a34a";
   if(mo>0){show("paidMaaserBtn");hide("maaserPaidBadge");}
   else if(state.maaserEverPaid){hide("paidMaaserBtn");show("maaserPaidBadge");document.getElementById("maaserPaidBadge").style.display="flex";}
   else{hide("paidMaaserBtn");hide("maaserPaidBadge");}
+  const tIn=state.transactions.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
+  const tOut=state.transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0);
+  document.getElementById("totalIn").textContent="+"+fmt(tIn);
+  document.getElementById("totalOut").textContent="-"+fmt(tOut);
+  document.getElementById("txCountStat").textContent=state.transactions.length;
   renderPending();renderTxList();save();
+  if(activeTab==="portfolio")renderPortfolio();
 }
 
 function renderTxList(){
   const search=(document.getElementById("searchInput").value||"").toLowerCase();
-  // Strip $ and commas so "$24.99" and "24.99" both match
-  const amtSearch=search.replace(/[$,\s]/g,'');
-  let filtered=state.transactions.filter(t=>
-    t.desc.toLowerCase().includes(search) ||
-    t.date.includes(search) ||
-    (amtSearch && (String(t.amount).includes(amtSearch) || String(t.balance).includes(amtSearch)))
-  );
+  const amtSearch=search.replace(/[$,\s]/g,"");
+  let filtered=state.transactions.filter(t=>t.desc.toLowerCase().includes(search)||t.date.includes(search)||(amtSearch&&(String(t.amount).includes(amtSearch)||String(t.balance).includes(amtSearch))));
   if(txFilter==="starred")filtered=filtered.filter(t=>t.starred);
   const list=document.getElementById("txList"),empty=document.getElementById("emptyState");
   const total=state.transactions.length;
   document.getElementById("txCount").textContent=total?`${filtered.length} of ${total}`:"";
   if(total===0){show("emptyState");empty.textContent="No transactions yet. Add your first one above!";list.innerHTML="";document.getElementById("searchInput").style.display="none";return;}
   document.getElementById("searchInput").style.display="block";
-  if(filtered.length===0){show("emptyState");empty.textContent=txFilter==="starred"?"No starred transactions yet. Long-press any transaction to star it.":"No results found.";list.innerHTML="";return;}
+  if(filtered.length===0){show("emptyState");empty.textContent=txFilter==="starred"?"No starred transactions. Long-press any card to star it.":"No results found.";list.innerHTML="";return;}
   hide("emptyState");
   let lastMonth=null;
   list.innerHTML=filtered.map(tx=>{
-    const txMonth=tx.date.slice(0,7);
-    let header="";
-    if(txMonth!==lastMonth){
-      lastMonth=txMonth;
-      const d=new Date(tx.date+"T12:00:00");
-      header=`<div class="month-header">${d.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>`;
-    }
-    return header+`
-    <div class="card${tx.starred?" starred":""}"
-      ontouchstart="lpStart(${tx.id},event)" ontouchend="lpEnd()" ontouchmove="lpEnd()"
-      onmousedown="lpStart(${tx.id},event)" onmouseup="lpEnd()" oncontextmenu="return false">
-      <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">
-        ${tx.starred?"⭐":(tx.type==="income"?"↑":"↓")}
-      </div>
+    const txMonth=tx.date.slice(0,7);let header="";
+    if(txMonth!==lastMonth){lastMonth=txMonth;const d=new Date(tx.date+"T12:00:00");header=`<div class="month-header">${d.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>`;}
+    return header+`<div class="card${tx.starred?" starred":""}" ontouchstart="lpStart(${tx.id},event)" ontouchend="lpEnd()" ontouchmove="lpEnd()" onmousedown="lpStart(${tx.id},event)" onmouseup="lpEnd()" oncontextmenu="return false">
+      <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${tx.starred?"⭐":(tx.type==="income"?"↑":"↓")}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(tx.desc)}</div>
         <div style="font-size:12px;color:#94a3b8">${esc(tx.date)} · balance after: ${esc(fmt(tx.balance))}</div>
-        ${tx.type==="income"?`<div style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer" onclick="toggleMaaser(${tx.id})">
-          <div class="small-check ${tx.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${tx.maaser?"✓":""}</span></div>
-          <span style="font-size:11px;color:${tx.maaser?"#b45309":"#94a3b8"}">${tx.maaser?"Maaser: "+esc(fmt(tx.maaserAmt)):"Count for Maaser"}</span>
-        </div>`:""}
+        ${tx.type==="income"?`<div style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer" onclick="toggleMaaser(${tx.id})"><div class="small-check ${tx.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${tx.maaser?"✓":""}</span></div><span style="font-size:11px;color:${tx.maaser?"#b45309":"#94a3b8"}">${tx.maaser?"Maaser: "+esc(fmt(tx.maaserAmt)):"Count for Maaser"}</span></div>`:""}
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-weight:700;font-size:15px;color:${tx.type==="income"?"#16a34a":"#dc2626"}">${tx.type==="income"?"+":"−"}${esc(fmt(tx.amount))}</div>
@@ -971,10 +1237,9 @@ function renderTxList(){
   }).join("");
 }
 
-// ── Delete ────────────────────────────────────────────────────────
+// ── Delete ─────────────────────────────────────────────────────────
 function openDeleteModal(id){
-  const tx=state.transactions.find(t=>t.id===id);if(!tx)return;
-  pendingDeleteId=id;
+  const tx=state.transactions.find(t=>t.id===id);if(!tx)return;pendingDeleteId=id;
   document.getElementById("deleteModalDesc").textContent=tx.desc;
   document.getElementById("deleteModalAmt").textContent=(tx.type==="income"?"+":"−")+fmt(tx.amount);
   document.getElementById("deleteModalAmt").style.color=tx.type==="income"?"#16a34a":"#dc2626";
@@ -985,43 +1250,38 @@ function confirmDelete(){
   const idx=state.transactions.findIndex(t=>t.id===id);if(idx===-1)return;
   const tx=state.transactions[idx];
   state.transactions.splice(idx,1);state.balance=roundMoney(state.balance-tx.delta);
-  // FIX: subtract this tx's maaser contribution rather than recalc from scratch
   if(tx.maaser)state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));
   sheetDelete(id);recalcBalances();invalidateAcCache();
   pendingDeleteId=null;hide("deleteModal");render();showToast("Transaction deleted");
 }
 
-// ── Form ──────────────────────────────────────────────────────────
+// ── Form ───────────────────────────────────────────────────────────
 function openForm(type){
   formType=type;formMaaser=(type==="income"&&settings.maaserDefault);
   document.getElementById("formDesc").value="";document.getElementById("formAmount").value="";document.getElementById("formDate").value=today();
   document.getElementById("formTitle").textContent=type==="income"?"➕ Add Income":"➖ Add Expense";
   document.getElementById("typeIncome").className="type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className="type-btn expense"+(type==="expense"?" active":"");
-  const mr=document.getElementById("maaserRow");
-  if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
+  const mr=document.getElementById("maaserRow");if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
   document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");
-  document.getElementById("saveTxBtn").disabled=false;
-  closeAllDropdowns();show("txForm");
+  document.getElementById("saveTxBtn").disabled=false;closeAllDropdowns();show("txForm");
 }
 function closeForm(){closeAllDropdowns();hide("txForm");}
 function setFormType(type){
   formType=type;formMaaser=(type==="income"&&settings.maaserDefault);
   document.getElementById("typeIncome").className="type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className="type-btn expense"+(type==="expense"?" active":"");
-  const mr=document.getElementById("maaserRow");
-  if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
+  const mr=document.getElementById("maaserRow");if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
   document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");
 }
 function toggleFormMaaser(){formMaaser=!formMaaser;document.getElementById("formMaaserCheck").className="checkbox"+(formMaaser?" checked":"");}
 function saveTx(){
-  const btn=document.getElementById("saveTxBtn");
-  if(btn.disabled)return;
+  const btn=document.getElementById("saveTxBtn");if(btn.disabled)return;
   const desc=document.getElementById("formDesc").value.trim();
   const amt=roundMoney(parseFloat(document.getElementById("formAmount").value));
   const date=document.getElementById("formDate").value;
   if(!desc||isNaN(amt)||amt<=0)return;
-  btn.disabled=true; // double-submit protection
+  btn.disabled=true;
   const delta=formType==="income"?amt:-amt;
   const maaserAmt=(formType==="income"&&formMaaser)?roundMoney(amt*0.1):0;
   const tx={id:Date.now(),type:formType,desc,amount:amt,delta,date,balance:roundMoney(state.balance+delta),maaser:formType==="income"&&formMaaser,maaserAmt};
@@ -1030,31 +1290,20 @@ function saveTx(){
   invalidateAcCache();sheetAdd(tx);showToast("Saved ✓");closeForm();render();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────
 function recalcBalances(){
   if(!state.transactions.length)return;
   state.transactions.sort((a,b)=>{if(b.date!==a.date)return b.date.localeCompare(a.date);return b.id-a.id;});
   const txs=[...state.transactions].reverse();
   let s=state.balance;for(const t of txs)s=roundMoney(s-t.delta);
-  let running=s;
-  for(let i=txs.length-1;i>=0;i--){running=roundMoney(running+txs[i].delta);txs[i].balance=running;}
+  let running=s;for(let i=txs.length-1;i>=0;i--){running=roundMoney(running+txs[i].delta);txs[i].balance=running;}
   state.transactions=[...txs].reverse();
 }
-// ── FIX: Maaser bug — add/subtract instead of recalc-from-scratch
-// Recalculating from scratch ignores partial payments (e.g. owed $50,
-// paid $20, now owed $30 — but recalc would snap back to $50).
+// FIX: add/subtract instead of recalc-from-scratch (preserves partial payments)
 function toggleMaaser(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx||tx.type!=="income")return;
-  if(tx.maaser){
-    // Turning OFF: subtract this tx's contribution
-    state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));
-    tx.maaser=false;tx.maaserAmt=0;
-  }else{
-    // Turning ON: add this tx's contribution
-    tx.maaser=true;tx.maaserAmt=roundMoney(tx.amount*0.1);
-    state.maaserOwed=roundMoney(state.maaserOwed+tx.maaserAmt);
-    state.maaserEverPaid=false; // new maaser added
-  }
+  if(tx.maaser){state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));tx.maaser=false;tx.maaserAmt=0;}
+  else{tx.maaser=true;tx.maaserAmt=roundMoney(tx.amount*0.1);state.maaserOwed=roundMoney(state.maaserOwed+tx.maaserAmt);state.maaserEverPaid=false;}
   render();
 }
 function openEdit(id){
@@ -1063,8 +1312,7 @@ function openEdit(id){
   document.getElementById("editDesc").value=tx.desc;document.getElementById("editAmount").value=tx.amount;document.getElementById("editDate").value=tx.date;
   document.getElementById("editTypeIncome").className="type-btn income"+(tx.type==="income"?" active":"");
   document.getElementById("editTypeExpense").className="type-btn expense"+(tx.type==="expense"?" active":"");
-  const mr=document.getElementById("editMaaserRow");
-  if(tx.type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
+  const mr=document.getElementById("editMaaserRow");if(tx.type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
   document.getElementById("editMaaserCheck").className="checkbox"+(editMaaser?" checked":"");
   closeAllDropdowns();show("editModal");
 }
@@ -1073,8 +1321,7 @@ function setEditType(type){
   editType=type;editMaaser=false;
   document.getElementById("editTypeIncome").className="type-btn income"+(type==="income"?" active":"");
   document.getElementById("editTypeExpense").className="type-btn expense"+(type==="expense"?" active":"");
-  const mr=document.getElementById("editMaaserRow");
-  if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
+  const mr=document.getElementById("editMaaserRow");if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
   document.getElementById("editMaaserCheck").className="checkbox";
 }
 function toggleEditMaaser(){editMaaser=!editMaaser;document.getElementById("editMaaserCheck").className="checkbox"+(editMaaser?" checked":"");}
@@ -1084,127 +1331,69 @@ function saveEdit(){
   const date=document.getElementById("editDate").value;
   if(!desc||isNaN(amt)||amt<=0)return;
   const tx=state.transactions.find(t=>t.id===editId);if(!tx)return;
-  const oldDelta=tx.delta,newDelta=editType==="income"?amt:-amt;
-  // FIX: track old maaser amount before overwriting
-  const oldMaaserAmt=tx.maaser?tx.maaserAmt:0;
+  const oldDelta=tx.delta,oldMaaserAmt=tx.maaser?tx.maaserAmt:0;
+  const newDelta=editType==="income"?amt:-amt;
   tx.type=editType;tx.desc=desc;tx.amount=amt;tx.delta=newDelta;tx.date=date;
   tx.maaser=editType==="income"&&editMaaser;tx.maaserAmt=tx.maaser?roundMoney(amt*0.1):0;
   state.balance=roundMoney(state.balance+(newDelta-oldDelta));
-  // FIX: add/subtract difference rather than recalc from scratch
   state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-oldMaaserAmt+tx.maaserAmt));
   if(tx.maaserAmt>oldMaaserAmt)state.maaserEverPaid=false;
+  recalcBalances(); // re-sort by date if date changed
   invalidateAcCache();sheetEdit(tx);showToast("Updated ✓");closeEditModal();render();
 }
 
-// ── Calculator ────────────────────────────────────────────────────
-let calcS={display:'0',prev:null,op:null,waiting:false};
-function openCalculator(){
-  show("calcScreen");
-  // FIX: push history state so Android back button closes calculator
-  // instead of exiting the app
-  history.pushState({vba:'calc'},'');
-  updateCalcDisplay();
-}
-
-// Handle Android back button for full-screen overlays
-window.addEventListener('popstate',()=>{
-  if(!document.getElementById('calcScreen').classList.contains('hidden')){
-    hide('calcScreen');
-  } else if(!document.getElementById('clearStep3').classList.contains('hidden')){
-    hide('clearStep3');
-  }
+// ── Calculator ─────────────────────────────────────────────────────
+let calcS={display:"0",prev:null,op:null,waiting:false};
+function openCalculator(){show("calcScreen");history.pushState({vba:"calc"},"");updateCalcDisplay();}
+window.addEventListener("popstate",()=>{
+  if(!document.getElementById("calcScreen").classList.contains("hidden"))hide("calcScreen");
+  else if(!document.getElementById("clearStep3").classList.contains("hidden"))hide("clearStep3");
 });
-function calcInput(v){
-  if(calcS.waiting){calcS.display=String(v);calcS.waiting=false;}
-  else{calcS.display=calcS.display==='0'?String(v):calcS.display+v;}
-  if(calcS.display.length>12)calcS.display=calcS.display.slice(0,12);
-  updateCalcDisplay();
-}
-function calcDot(){
-  if(calcS.waiting){calcS.display='0.';calcS.waiting=false;}
-  else if(!calcS.display.includes('.'))calcS.display+='.';
-  updateCalcDisplay();
-}
-function calcOp(op){
-  const curr=parseFloat(calcS.display);
-  if(calcS.prev!==null&&!calcS.waiting){
-    const r=doCalc(calcS.prev,curr,calcS.op);
-    calcS.display=String(roundMoney(r));
-  }
-  calcS.prev=parseFloat(calcS.display);calcS.op=op;calcS.waiting=true;
-  updateCalcDisplay();
-}
-function calcEquals(){
-  if(calcS.op===null||calcS.prev===null)return;
-  const r=doCalc(calcS.prev,parseFloat(calcS.display),calcS.op);
-  calcS.display=String(roundMoney(r));calcS.prev=null;calcS.op=null;calcS.waiting=false;
-  updateCalcDisplay();
-}
-function doCalc(a,b,op){
-  if(op==='+')return a+b;if(op==='−')return a-b;
-  if(op==='×')return a*b;if(op==='÷')return b!==0?a/b:0;return b;
-}
-function calcClear(){calcS={display:'0',prev:null,op:null,waiting:false};updateCalcDisplay();}
+function calcInput(v){if(calcS.waiting){calcS.display=String(v);calcS.waiting=false;}else{calcS.display=calcS.display==="0"?String(v):calcS.display+v;}if(calcS.display.length>12)calcS.display=calcS.display.slice(0,12);updateCalcDisplay();}
+function calcDot(){if(calcS.waiting){calcS.display="0.";calcS.waiting=false;}else if(!calcS.display.includes("."))calcS.display+=".";updateCalcDisplay();}
+function calcOp(op){const curr=parseFloat(calcS.display);if(calcS.prev!==null&&!calcS.waiting){const r=doCalc(calcS.prev,curr,calcS.op);calcS.display=String(roundMoney(r));}calcS.prev=parseFloat(calcS.display);calcS.op=op;calcS.waiting=true;updateCalcDisplay();}
+function calcEquals(){if(calcS.op===null||calcS.prev===null)return;const r=doCalc(calcS.prev,parseFloat(calcS.display),calcS.op);calcS.display=String(roundMoney(r));calcS.prev=null;calcS.op=null;calcS.waiting=false;updateCalcDisplay();}
+function doCalc(a,b,op){if(op==="+")return a+b;if(op==="−")return a-b;if(op==="×")return a*b;if(op==="÷")return b!==0?a/b:0;return b;}
+function calcClear(){calcS={display:"0",prev:null,op:null,waiting:false};updateCalcDisplay();}
 function calcToggleSign(){calcS.display=String(parseFloat(calcS.display)*-1);updateCalcDisplay();}
 function calcPercent(){calcS.display=String(roundMoney(parseFloat(calcS.display)/100));updateCalcDisplay();}
-function updateCalcDisplay(){
-  document.getElementById("calcDisplay").textContent=calcS.display;
-  document.getElementById("calcPrev").textContent=calcS.prev!==null?(String(calcS.prev)+" "+calcS.op):"";
-}
+function updateCalcDisplay(){document.getElementById("calcDisplay").textContent=calcS.display;document.getElementById("calcPrev").textContent=calcS.prev!==null?(String(calcS.prev)+" "+calcS.op):"";}
 function useCalcAmount(){
-  const amount=Math.abs(parseFloat(calcS.display));
-  if(isNaN(amount)||amount<=0){showToast("Enter a valid amount first");return;}
-  // Detect which form is open and fill it
-  const checks=[
-    ['txForm','formAmount'],['addPendingModal','pendingAmount'],
-    ['editModal','editAmount'],['maaserPayModal','maaserPayInput'],
-    ['addMaaserModal','addMaaserAmt']
-  ];
+  const amount=Math.abs(parseFloat(calcS.display));if(isNaN(amount)||amount<=0){showToast("Enter a valid amount first");return;}
+  const checks=[["txForm","formAmount"],["addPendingModal","pendingAmount"],["editModal","editAmount"],["maaserPayModal","maaserPayInput"],["addMaaserModal","addMaaserAmt"],["addInvestmentModal","invAmountIn"],["addLoanModal","loanAmount"],["loanPaymentModal","loanPayAmt"]];
   let filled=false;
-  for(const[modal,field]of checks){
-    if(!document.getElementById(modal).classList.contains('hidden')){
-      document.getElementById(field).value=amount;
-      if(field==='maaserPayInput')onMaaserPayInput();
-      filled=true;break;
-    }
-  }
-  if(filled){showToast("Amount filled ✓");}
-  else{
-    navigator.clipboard.writeText(String(amount)).catch(()=>{});
-    showToast(fmt(amount)+" copied to clipboard");
-  }
+  for(const[modal,field]of checks){if(!document.getElementById(modal).classList.contains("hidden")){document.getElementById(field).value=amount;if(field==="maaserPayInput")onMaaserPayInput();if(field==="loanPayAmt")updateLoanPayPreview();filled=true;break;}}
+  if(filled)showToast("Amount filled ✓");else{navigator.clipboard.writeText(String(amount)).catch(()=>{});showToast(fmt(amount)+" copied to clipboard");}
   hide("calcScreen");
 }
 
-// ── Poll Sheets ───────────────────────────────────────────────────
+// ── Poll Sheets ────────────────────────────────────────────────────
 async function pollPending(){
   if(!settings.sheetsEnabled||!settings.scriptUrl)return;
   try{
-    const res=await fetch(settings.scriptUrl+"?action=getPending");
-    const data=await res.json();
+    const res=await fetch(settings.scriptUrl+"?action=getPending"),data=await res.json();
     if(!data.success||!data.items||data.items.length===0)return;
     let added=0;
     for(const item of data.items){
       const exists=state.pending.some(p=>String(p.id)===String(item.id))||state.transactions.some(t=>String(t.id)===String(item.id));
       if(!exists){state.pending.push({id:item.id,type:item.type||"expense",desc:item.desc||"Unknown",amount:roundMoney(parseFloat(item.amount)||0),source:item.source||"",date:item.date||today(),maaser:false});added++;}
     }
-    if(added>0){save();renderPending();if('setAppBadge'in navigator)navigator.setAppBadge(state.pending.length).catch(()=>{});showToast(`${added} new item${added>1?'s':''} in pending queue`);}
+    if(added>0){save();renderPending();if("setAppBadge"in navigator)navigator.setAppBadge(state.pending.length).catch(()=>{});showToast(`${added} new item${added>1?"s":""} in pending queue`);}
   }catch{}
 }
-function updateBadge(){
-  if('setAppBadge'in navigator){state.pending.length>0?navigator.setAppBadge(state.pending.length).catch(()=>{}):navigator.clearAppBadge().catch(()=>{});}
-}
+function updateBadge(){if("setAppBadge"in navigator){state.pending.length>0?navigator.setAppBadge(state.pending.length).catch(()=>{}):navigator.clearAppBadge().catch(()=>{});}}
 
-// ── Init ──────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────
 document.getElementById("formDate").value=today();
 document.getElementById("pendingDate").value=today();
+document.getElementById("invDate").value=today();
+document.getElementById("loanDate").value=today();
 document.getElementById("appTitle").textContent="💳 "+settings.appName;
 document.getElementById("lockTitle").textContent=settings.appName;
-render();updateBadge();
+render();updateHeader();updateBadge();
 if(shouldLock())lock();else stampActivity();
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
-pollPending();
-setInterval(pollPending,3*60*1000);
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+pollPending();setInterval(pollPending,3*60*1000);
 </script>
 </body>
 </html>
