@@ -327,6 +327,10 @@
       <button onclick="exportCSV()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📤 CSV</button>
     </div>
     <div class="setting-row">
+      <div><div class="setting-label">Restore from cloud</div><div class="setting-sub">Rebuild everything from your Google Sheets backup</div></div>
+      <button onclick="restoreFromCloud()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">☁️ Restore</button>
+    </div>
+    <div class="setting-row">
       <div><div class="setting-label">Lock now</div></div>
       <button onclick="lockNow()" style="padding:7px 12px;background:#334155;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔒 Lock</button>
     </div>
@@ -721,10 +725,62 @@ function sendToSheet(data){
   data.timestamp=new Date().toISOString();data.lastKnownBalance=state.balance;
   fetch(settings.scriptUrl,{method:'POST',mode:'no-cors',body:JSON.stringify(data)}).catch(()=>{});
 }
-function sheetAdd(tx){sendToSheet({...tx,action:'add'});}
-function sheetDelete(id){sendToSheet({id,action:'delete'});}
-function sheetEdit(tx){sendToSheet({...tx,action:'edit'});}
-function sheetSyncAll(){showToast("Sync sent ☁️");sendToSheet({action:'sync',transactions:state.transactions});}
+function hasAnyData(){
+  return state.transactions.length>0 || state.investments.length>0 || state.loans.length>0 || (state.pending&&state.pending.length>0) || state.maaserOwed>0;
+}
+
+// UPGRADE: every change now pushes a COMPLETE, self-healing backup of the
+// entire app — transactions, investments, loans, pending, and Maaser state.
+// The Apps Script stores a lossless JSON copy (the restore source) plus
+// human-readable Transactions / Investments / Loans tabs for viewing.
+let _syncTimer=null;
+function scheduleSheetSync(){
+  if(!settings.sheetsEnabled||!settings.scriptUrl)return;
+  if(_syncTimer)clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(()=>{
+    _syncTimer=null;
+    // SAFETY: never auto-overwrite the cloud backup with an empty app.
+    if(!hasAnyData())return;
+    sendToSheet({action:'fullsync',state:state});
+  },1500);
+}
+// All mutations route through the full backup, so nothing is ever left out.
+function sheetAdd(tx){scheduleSheetSync();}
+function sheetDelete(id){scheduleSheetSync();}
+function sheetEdit(tx){scheduleSheetSync();}
+function sheetSyncAll(){
+  if(!hasAnyData()){
+    if(!confirm("Your local data is empty. Syncing now will ERASE the cloud backup. Continue?"))return;
+  }
+  showToast("Backing up ☁️");
+  sendToSheet({action:'fullsync',state:state});
+}
+
+// RESTORE: pull the complete backup from Google Sheets and rebuild the app.
+// Use this if your phone's data was lost. GET requests CAN be read, so this
+// gives real confirmation (unlike the fire-and-forget backup writes).
+async function restoreFromCloud(){
+  if(!settings.scriptUrl){showToast("Set your Apps Script URL first");return;}
+  if(!confirm("Restore from Google Sheets backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
+  showToast("Fetching backup…");
+  try{
+    const res=await fetch(settings.scriptUrl+"?action=getBackup");
+    const data=await res.json();
+    if(!data.success||!data.backup){showToast("No backup found in the Sheet.");return;}
+    let parsed;
+    try{parsed=JSON.parse(data.backup);}catch{showToast("Backup is corrupted — could not restore.");return;}
+    if(!parsed||!Array.isArray(parsed.transactions)){showToast("Backup format not recognised.");return;}
+    state=parsed;
+    if(!state.pending)state.pending=[];
+    if(!state.investments)state.investments=[];
+    if(!state.loans)state.loans=[];
+    if(typeof state.balance!=="number")state.balance=0;
+    if(typeof state.maaserOwed!=="number")state.maaserOwed=0;
+    invalidateAcCache();save();render();updateHeader();
+    const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
+    showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
+  }catch(e){showToast("Restore failed — check connection/URL.");}
+}
 
 // ── State ──────────────────────────────────────────────────────────
 let state=load();
@@ -990,7 +1046,7 @@ function runBulkImport(){
       importedCount++;
     }else if(line.trim())skippedCount++;
   });
-  if(importedCount>0){recalcBalances();invalidateAcCache();render();hide('importModal');document.getElementById("importBox").value="";showToast(skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?"s":""}`:`Imported ${importedCount} transaction${importedCount>1?"s":""}!`);}
+  if(importedCount>0){recalcBalances();invalidateAcCache();scheduleSheetSync();render();hide('importModal');document.getElementById("importBox").value="";showToast(skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?"s":""}`:`Imported ${importedCount} transaction${importedCount>1?"s":""}!`);}
   else alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
 }
 
