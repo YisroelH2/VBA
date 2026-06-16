@@ -763,25 +763,43 @@ async function restoreFromCloud(){
   if(!settings.scriptUrl){showToast("Set your Apps Script URL first");return;}
   if(!confirm("Restore from Google Sheets backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
   showToast("Fetching backup…");
-  try{
-    const res=await fetch(settings.scriptUrl+"?action=getBackup");
-    const data=await res.json();
-    if(!data.success||!data.backup){showToast("No backup found in the Sheet.");return;}
-    let parsed;
-    try{parsed=JSON.parse(data.backup);}catch{showToast("Backup is corrupted — could not restore.");return;}
-    if(!parsed||!Array.isArray(parsed.transactions)){showToast("Backup format not recognised.");return;}
-    state=parsed;
-    if(!state.pending)state.pending=[];
-    if(!state.investments)state.investments=[];
-    if(!state.loans)state.loans=[];
-    if(typeof state.balance!=="number")state.balance=0;
-    if(typeof state.maaserOwed!=="number")state.maaserOwed=0;
-    invalidateAcCache();save();render();updateHeader();
-    const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
-    showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
-  }catch(e){showToast("Restore failed — check connection/URL.");}
-}
 
+  // Phase 1 — fetch the RAW body, no JSON assumptions
+  let raw;
+  try{
+    const res=await fetch(settings.scriptUrl+"?action=getBackup",{redirect:"follow"});
+    raw=await res.text();
+    if(!res.ok){showToast(`Server returned HTTP ${res.status} — re-deploy the Apps Script.`);return;}
+  }catch(e){
+    showToast("Couldn't reach the script (network/CORS). "+(e&&e.message?e.message:""));return;
+  }
+
+  // An HTML page = wrong/stale deployment or a login wall
+  if(/^\s*</.test(raw)){
+    showToast("Script returned a web page, not data — deploy a NEW version & set access to 'Anyone'.");return;
+  }
+
+  // Phase 2 — parse envelope, then the inner backup
+  let data,parsed;
+  try{data=JSON.parse(raw);}catch{showToast("Response wasn't valid JSON.");return;}
+  if(!data.success){showToast("Script error: "+(data.error||"unknown"));return;}
+  if(!data.backup){showToast("No backup in the Sheet yet — make one change to seed it.");return;}
+  try{parsed=JSON.parse(data.backup);}catch{showToast("Backup is corrupted — could not restore.");return;}
+  if(!parsed||!Array.isArray(parsed.transactions)){showToast("Backup format not recognised.");return;}
+
+  // Phase 3 — apply (isolated so a redraw error never reads as a 'connection' error)
+  if(!parsed.pending)parsed.pending=[];
+  if(!parsed.investments)parsed.investments=[];
+  if(!parsed.loans)parsed.loans=[];
+  if(typeof parsed.balance!=="number")parsed.balance=0;
+  if(typeof parsed.maaserOwed!=="number")parsed.maaserOwed=0;
+  state=parsed;
+  try{ invalidateAcCache();save();render();updateHeader(); }
+  catch(e){ showToast("Data restored, but redraw failed: "+(e&&e.message?e.message:""));return; }
+
+  const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
+  showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
+}
 // ── State ──────────────────────────────────────────────────────────
 let state=load();
 // Ensure new fields exist on old data
