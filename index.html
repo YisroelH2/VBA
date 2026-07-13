@@ -713,7 +713,15 @@ async function setupFingerprint(){
     };
     const verifyRes=await fetch('/api/auth/register-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:payload,challengeId,deviceName:navigator.userAgent.slice(0,60)})});
     const result=await verifyRes.json();
-    if(result.verified){showToast("Fingerprint sign-in enabled ✓");refreshFingerprintSetting();return true;}
+    if(result.verified){
+      showToast("Fingerprint sign-in enabled ✓");
+      refreshFingerprintSetting();
+      // Reconcile with the cloud now that this device is authenticated: if
+      // this is a new device joining an existing account, pull its data;
+      // if this device already had local data, push it up.
+      await loadFromCloud();
+      return true;
+    }
     showToast("Setup failed: "+(result.error||"not verified"));return false;
   }catch(e){showToast("Setup cancelled or failed");return false;}
 }
@@ -790,8 +798,9 @@ function scheduleCloudSync(){
 }
 async function pushToCloud(){
   try{
-    const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)});
+    const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state),keepalive:true});
     if(res.status===401)return; // not signed in yet — local cache is still authoritative on this device
+    if(res.ok)markConfirmed();
   }catch{}
 }
 // All mutations route through the full backup, so nothing is ever left out.
@@ -806,21 +815,32 @@ function sheetSyncAll(){
   pushToCloud();
 }
 
-// Pull the complete state from D1 and rebuild the app locally.
-async function loadFromCloud(){
+// Pull the complete state from D1 and rebuild the app locally — but only if
+// this device doesn't have local edits still waiting to be confirmed by the
+// server. Otherwise a refresh that lands before the debounced push finishes
+// (e.g. right after adding a transaction) would silently overwrite the new
+// local data with the older cloud copy. When that happens, push local state
+// up instead of pulling the stale cloud copy down. `force` (used by the
+// explicit "Restore" button) skips this check entirely.
+async function loadFromCloud(force){
   try{
+    if(!force&&hasUnsyncedChanges()){
+      pushToCloud();
+      return false;
+    }
     const res=await fetch('/api/sync');
     if(res.status===401)return false; // not signed in — nothing to fetch yet
     if(!res.ok)return false;
     const parsed=await res.json();
     if(!parsed||!Array.isArray(parsed.transactions))return false;
+
     if(!parsed.pending)parsed.pending=[];
     if(!parsed.investments)parsed.investments=[];
     if(!parsed.loans)parsed.loans=[];
     if(typeof parsed.balance!=="number")parsed.balance=0;
     if(typeof parsed.maaserOwed!=="number")parsed.maaserOwed=0;
     state=parsed;
-    invalidateAcCache();save();render();updateHeader();
+    invalidateAcCache();saveLocalOnly();markConfirmed();render();updateHeader();
     return true;
   }catch{return false;}
 }
@@ -828,7 +848,7 @@ async function loadFromCloud(){
 async function restoreFromCloud(){
   if(!confirm("Restore from your D1 cloud backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
   showToast("Fetching backup…");
-  const ok=await loadFromCloud();
+  const ok=await loadFromCloud(true);
   if(!ok){showToast("Couldn't restore — sign in with your fingerprint first, or no backup exists yet.");return;}
   const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
   showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
@@ -852,9 +872,21 @@ function load(){
   try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch{}
   return{balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[],investments:[],loans:[]};
 }
-function save(){
+// DIRTY_KEY/CONFIRMED_KEY track, independently of any server clock, whether
+// this device has local edits the cloud hasn't confirmed receiving yet —
+// so a page load never trusts a stale cloud copy over a not-yet-synced
+// local change (see loadFromCloud).
+const DIRTY_KEY="vba_local_dirty_at",CONFIRMED_KEY="vba_local_confirmed_at";
+function markDirty(){localStorage.setItem(DIRTY_KEY,String(Date.now()));}
+function markConfirmed(){localStorage.setItem(CONFIRMED_KEY,String(Date.now()));}
+function hasUnsyncedChanges(){return parseInt(localStorage.getItem(DIRTY_KEY)||"0")>parseInt(localStorage.getItem(CONFIRMED_KEY)||"0");}
+function saveLocalOnly(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
   catch(e){if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')showToast("⚠️ Storage almost full! Export your data.");}
+}
+function save(){
+  saveLocalOnly();
+  markDirty();
   scheduleCloudSync();
 }
 function fmt(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
@@ -1310,7 +1342,7 @@ function render(){
   document.getElementById("totalIn").textContent="+"+fmt(tIn);
   document.getElementById("totalOut").textContent="-"+fmt(tOut);
   document.getElementById("txCountStat").textContent=state.transactions.length;
-  renderPending();renderTxList();save();
+  renderPending();renderTxList();saveLocalOnly();
   if(activeTab==="portfolio")renderPortfolio();
 }
 

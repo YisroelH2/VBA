@@ -22,6 +22,7 @@ export async function onRequestGet({ request, env }) {
     balance: meta ? meta.balance : 0,
     maaserOwed: meta ? meta.maaser_owed : 0,
     maaserEverPaid: meta ? !!meta.maaser_ever_paid : false,
+    updatedAt: meta ? Number(meta.updated_at) || 0 : 0,
     transactions: transactions.results.map(t => ({
       id: t.id, type: t.type, desc: t.desc, amount: t.amount, delta: t.delta,
       date: t.date, balance: t.balance_after, maaser: !!t.maaser, maaserAmt: t.maaser_amt,
@@ -44,10 +45,11 @@ export async function onRequestPost({ request, env }) {
     return new Response(JSON.stringify({ error: "Malformed state" }), { status: 400 });
   }
 
+  const updatedAt = Date.now();
   const stmts = [
     env.DB.prepare(
-      "UPDATE meta SET balance = ?, maaser_owed = ?, maaser_ever_paid = ?, updated_at = datetime('now') WHERE id = 1"
-    ).bind(state.balance || 0, state.maaserOwed || 0, state.maaserEverPaid ? 1 : 0),
+      "UPDATE meta SET balance = ?, maaser_owed = ?, maaser_ever_paid = ?, updated_at = ? WHERE id = 1"
+    ).bind(state.balance || 0, state.maaserOwed || 0, state.maaserEverPaid ? 1 : 0, updatedAt),
     env.DB.prepare("DELETE FROM transactions"),
     env.DB.prepare("DELETE FROM investments"),
     env.DB.prepare("DELETE FROM loans"),
@@ -78,5 +80,5 @@ export async function onRequestPost({ request, env }) {
 
   await env.DB.batch(stmts);
 
-  return new Response(JSON.stringify({ synced: true }), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({ synced: true, updatedAt }), { headers: { "Content-Type": "application/json" } });
 }

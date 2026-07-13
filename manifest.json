@@ -2,7 +2,7 @@
   "name": "Virtual Bank Account",
   "short_name": "VBA",
   "description": "Personal ledger with Maaser tracking",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#1e293b",
