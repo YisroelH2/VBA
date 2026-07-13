@@ -1136,7 +1136,7 @@ function runBulkImport(){
       importedCount++;
     }else if(line.trim())skippedCount++;
   });
-  if(importedCount>0){recalcBalances();invalidateAcCache();scheduleSheetSync();render();hide('importModal');document.getElementById("importBox").value="";showToast(skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?"s":""}`:`Imported ${importedCount} transaction${importedCount>1?"s":""}!`);}
+  if(importedCount>0){recalcBalances();invalidateAcCache();save();render();hide('importModal');document.getElementById("importBox").value="";showToast(skippedCount>0?`Imported ${importedCount}, skipped ${skippedCount} invalid line${skippedCount>1?"s":""}`:`Imported ${importedCount} transaction${importedCount>1?"s":""}!`);}
   else alert('No valid transactions found.\nFormat: +50  or  -$4.50 Lunch');
 }
 
