@@ -1,0 +1,27 @@
+{
+  "name": "vba",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sw.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YisroelH2/VBA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/YisroelH2/VBA/issues"
+  },
+  "homepage": "https://github.com/YisroelH2/VBA#readme",
+  "devDependencies": {
+    "wrangler": "^4.110.0"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^13.3.2"
+  }
+}

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
   <title>Virtual Bank Account</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
@@ -299,17 +299,9 @@
       <div><div class="setting-label">App name</div></div>
       <input id="settingAppName" class="input" style="width:150px;font-size:13px" placeholder="Virtual Bank Account" maxlength="30" />
     </div>
-    <div class="setting-row" style="flex-direction:column;align-items:stretch">
-      <div style="margin-bottom:6px"><div class="setting-label">Apps Script URL</div><div class="setting-sub">Your Google Sheets webhook — private, stored on-device only</div></div>
-      <input id="settingScriptUrl" class="input" style="font-size:11px" placeholder="https://script.google.com/macros/s/.../exec" />
-    </div>
     <div class="setting-row">
       <div><div class="setting-label">Starting balance</div><div class="setting-sub">Recalculates all running totals</div></div>
       <input id="newBalanceInput" class="input" type="number" style="width:100px;font-size:13px" placeholder="e.g. 500" />
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Google Sheets sync</div></div>
-      <label class="toggle-wrap"><input type="checkbox" id="settingSheets"><span class="toggle-slider"></span></label>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Default Maaser on income</div></div>
@@ -323,11 +315,15 @@
       ⚠️ The lock screen is a <strong>privacy curtain</strong>, not encryption. It blocks casual viewing but not someone with browser console access.
     </div>
     <div class="setting-row">
+      <div><div class="setting-label">Biometric sign-in</div><div id="fpSetupSub" class="setting-sub">Register this device's fingerprint/Face ID with your cloud account</div></div>
+      <button id="fpSetupBtn" onclick="setupFingerprint()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">👆 Setup</button>
+    </div>
+    <div class="setting-row">
       <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV</div></div>
       <button onclick="exportCSV()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📤 CSV</button>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">Restore from cloud</div><div class="setting-sub">Rebuild everything from your Google Sheets backup</div></div>
+      <div><div class="setting-label">Restore from cloud</div><div class="setting-sub">Rebuild everything from your D1 cloud backup</div></div>
       <button onclick="restoreFromCloud()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">☁️ Restore</button>
     </div>
     <div class="setting-row">
@@ -656,22 +652,18 @@ const LOCK_TIMEOUT=30*60*1000;
 let settings=loadSettings();
 function loadSettings(){
   try{const r=localStorage.getItem(SETTINGS_KEY);if(r)return JSON.parse(r);}catch{}
-  return{appName:"Virtual Bank Account",lockEnabled:true,maaserDefault:true,sheetsEnabled:true,
-    scriptUrl:"https://script.google.com/macros/s/AKfycbzFLGRBS7gY3bGxazu9uVmrxz8PMOi4qZJRFcqXeVHJPhggkrLAKk64cA69qCtHtUK4/exec"};
+  return{appName:"Virtual Bank Account",lockEnabled:true,maaserDefault:true};
 }
 function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}
 function openSettings(){
   document.getElementById("settingAppName").value=settings.appName||"";
-  document.getElementById("settingScriptUrl").value=settings.scriptUrl||"";
-  document.getElementById("settingSheets").checked=!!settings.sheetsEnabled;
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
+  refreshFingerprintSetting();
   show("settingsModal");
 }
 function applySettings(){
   settings.appName=document.getElementById("settingAppName").value.trim()||"Virtual Bank Account";
-  settings.scriptUrl=document.getElementById("settingScriptUrl").value.trim();
-  settings.sheetsEnabled=document.getElementById("settingSheets").checked;
   settings.maaserDefault=document.getElementById("settingMaaserDefault").checked;
   settings.lockEnabled=document.getElementById("settingLock").checked;
   saveSettings();
@@ -688,30 +680,81 @@ function applySettings(){
   hide("settingsModal");render();showToast("Settings saved ✓");
 }
 
-// ── Biometric ──────────────────────────────────────────────────────
+// ── Biometric (server-verified WebAuthn) ─────────────────────────────
 const isPWA=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
-let bioCredentialId=localStorage.getItem("vba_cred_id")||null;
 function stampActivity(){localStorage.setItem(LOCK_KEY,Date.now().toString());}
 function shouldLock(){if(!settings.lockEnabled||!isPWA)return false;return Date.now()-parseInt(localStorage.getItem(LOCK_KEY)||"0")>LOCK_TIMEOUT;}
-async function registerBiometric(){
-  try{
-    const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:"VBA"},user:{id:new Uint8Array(16),name:"user",displayName:"VBA User"},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000}});
-    const idB64=btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
-    localStorage.setItem("vba_cred_id",idB64);bioCredentialId=idB64;return true;
-  }catch{return false;}
+
+function b64urlToBuf(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;}
+function bufToB64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+
+async function authStatus(){
+  try{const res=await fetch('/api/auth/status');return await res.json();}
+  catch{return{hasCredential:false,authenticated:false};}
 }
-async function assertBiometric(){
+
+async function setupFingerprint(){
+  if(!window.PublicKeyCredential){showToast("This device/browser doesn't support biometric sign-in");return;}
   try{
-    const opts={publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),userVerification:"required",timeout:60000}};
-    if(bioCredentialId){const idBytes=Uint8Array.from(atob(bioCredentialId),c=>c.charCodeAt(0));opts.publicKey.allowCredentials=[{type:"public-key",id:idBytes}];}
-    await navigator.credentials.get(opts);return true;
-  }catch{return false;}
+    const optRes=await fetch('/api/auth/register-options');
+    if(!optRes.ok)throw new Error('Could not start registration');
+    const{options,challengeId}=await optRes.json();
+    options.challenge=b64urlToBuf(options.challenge);
+    options.user.id=b64urlToBuf(options.user.id);
+    if(options.excludeCredentials)options.excludeCredentials=options.excludeCredentials.map(c=>({...c,id:b64urlToBuf(c.id)}));
+    const cred=await navigator.credentials.create({publicKey:options});
+    const payload={
+      id:cred.id,rawId:bufToB64url(cred.rawId),type:cred.type,
+      response:{
+        attestationObject:bufToB64url(cred.response.attestationObject),
+        clientDataJSON:bufToB64url(cred.response.clientDataJSON),
+      },
+      clientExtensionResults:cred.getClientExtensionResults(),
+    };
+    const verifyRes=await fetch('/api/auth/register-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:payload,challengeId,deviceName:navigator.userAgent.slice(0,60)})});
+    const result=await verifyRes.json();
+    if(result.verified){showToast("Fingerprint sign-in enabled ✓");refreshFingerprintSetting();return true;}
+    showToast("Setup failed: "+(result.error||"not verified"));return false;
+  }catch(e){showToast("Setup cancelled or failed");return false;}
 }
+
+async function loginFingerprint(){
+  try{
+    const optRes=await fetch('/api/auth/login-options');
+    if(optRes.status===404)return{ok:false,noCredential:true};
+    if(!optRes.ok)throw new Error('Could not start login');
+    const{options,challengeId}=await optRes.json();
+    options.challenge=b64urlToBuf(options.challenge);
+    if(options.allowCredentials)options.allowCredentials=options.allowCredentials.map(c=>({...c,id:b64urlToBuf(c.id)}));
+    const cred=await navigator.credentials.get({publicKey:options});
+    const payload={
+      id:cred.id,rawId:bufToB64url(cred.rawId),type:cred.type,
+      response:{
+        authenticatorData:bufToB64url(cred.response.authenticatorData),
+        clientDataJSON:bufToB64url(cred.response.clientDataJSON),
+        signature:bufToB64url(cred.response.signature),
+        userHandle:cred.response.userHandle?bufToB64url(cred.response.userHandle):null,
+      },
+      clientExtensionResults:cred.getClientExtensionResults(),
+    };
+    const verifyRes=await fetch('/api/auth/login-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:payload,challengeId})});
+    const result=await verifyRes.json();
+    return{ok:!!result.verified};
+  }catch{return{ok:false};}
+}
+
 async function triggerBiometric(){
   document.getElementById("fpError").textContent="";
   if(!window.PublicKeyCredential){unlock();return;}
-  if(!bioCredentialId){const ok=await registerBiometric();if(!ok){document.getElementById("fpError").textContent="Biometric setup failed.";return;}}
-  (await assertBiometric())?unlock():(document.getElementById("fpError").textContent="Fingerprint not recognised. Try again.");
+  const status=await authStatus();
+  if(!status.hasCredential){
+    const ok=await setupFingerprint();
+    if(!ok){document.getElementById("fpError").textContent="Biometric setup failed.";return;}
+    await loadFromCloud();unlock();return;
+  }
+  const{ok}=await loginFingerprint();
+  if(ok){await loadFromCloud();unlock();}
+  else document.getElementById("fpError").textContent="Fingerprint not recognised. Try again.";
 }
 function lock(){show("lockScreen");}
 function unlock(){hide("lockScreen");stampActivity();}
@@ -719,84 +762,74 @@ function lockNow(){hide("settingsModal");lock();}
 document.addEventListener("pointerdown",stampActivity);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&shouldLock())lock();});
 
-// ── Sheets ─────────────────────────────────────────────────────────
-function sendToSheet(data){
-  if(!settings.sheetsEnabled||!settings.scriptUrl)return;
-  data.timestamp=new Date().toISOString();data.lastKnownBalance=state.balance;
-  fetch(settings.scriptUrl,{method:'POST',mode:'no-cors',body:JSON.stringify(data)}).catch(()=>{});
+async function refreshFingerprintSetting(){
+  const status=await authStatus();
+  const btn=document.getElementById("fpSetupBtn"),sub=document.getElementById("fpSetupSub");
+  if(!btn)return;
+  if(status.hasCredential){btn.textContent="✓ Registered";sub.textContent="This account already has a fingerprint credential registered";}
+  else{btn.textContent="👆 Setup";sub.textContent="Register this device's fingerprint/Face ID with your cloud account";}
 }
+
+// ── Cloud sync (D1) ───────────────────────────────────────────────────
 function hasAnyData(){
   return state.transactions.length>0 || state.investments.length>0 || state.loans.length>0 || (state.pending&&state.pending.length>0) || state.maaserOwed>0;
 }
 
-// UPGRADE: every change now pushes a COMPLETE, self-healing backup of the
-// entire app — transactions, investments, loans, pending, and Maaser state.
-// The Apps Script stores a lossless JSON copy (the restore source) plus
-// human-readable Transactions / Investments / Loans tabs for viewing.
+// Every mutation pushes a COMPLETE, self-healing backup of the entire app
+// (transactions, investments, loans, pending, maaser state) to D1 via
+// /api/sync, debounced so rapid edits collapse into one request.
 let _syncTimer=null;
-function scheduleSheetSync(){
-  if(!settings.sheetsEnabled||!settings.scriptUrl)return;
+function scheduleCloudSync(){
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(()=>{
     _syncTimer=null;
     // SAFETY: never auto-overwrite the cloud backup with an empty app.
     if(!hasAnyData())return;
-    sendToSheet({action:'fullsync',state:state});
+    pushToCloud();
   },1500);
 }
+async function pushToCloud(){
+  try{
+    const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)});
+    if(res.status===401)return; // not signed in yet — local cache is still authoritative on this device
+  }catch{}
+}
 // All mutations route through the full backup, so nothing is ever left out.
-function sheetAdd(tx){scheduleSheetSync();}
-function sheetDelete(id){scheduleSheetSync();}
-function sheetEdit(tx){scheduleSheetSync();}
+function sheetAdd(tx){scheduleCloudSync();}
+function sheetDelete(id){scheduleCloudSync();}
+function sheetEdit(tx){scheduleCloudSync();}
 function sheetSyncAll(){
   if(!hasAnyData()){
     if(!confirm("Your local data is empty. Syncing now will ERASE the cloud backup. Continue?"))return;
   }
   showToast("Backing up ☁️");
-  sendToSheet({action:'fullsync',state:state});
+  pushToCloud();
 }
 
-// RESTORE: pull the complete backup from Google Sheets and rebuild the app.
-// Use this if your phone's data was lost. GET requests CAN be read, so this
-// gives real confirmation (unlike the fire-and-forget backup writes).
-async function restoreFromCloud(){
-  if(!settings.scriptUrl){showToast("Set your Apps Script URL first");return;}
-  if(!confirm("Restore from Google Sheets backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
-  showToast("Fetching backup…");
-
-  // Phase 1 — fetch the RAW body, no JSON assumptions
-  let raw;
+// Pull the complete state from D1 and rebuild the app locally.
+async function loadFromCloud(){
   try{
-    const res=await fetch(settings.scriptUrl+"?action=getBackup",{redirect:"follow"});
-    raw=await res.text();
-    if(!res.ok){showToast(`Server returned HTTP ${res.status} — re-deploy the Apps Script.`);return;}
-  }catch(e){
-    showToast("Couldn't reach the script (network/CORS). "+(e&&e.message?e.message:""));return;
-  }
+    const res=await fetch('/api/sync');
+    if(res.status===401)return false; // not signed in — nothing to fetch yet
+    if(!res.ok)return false;
+    const parsed=await res.json();
+    if(!parsed||!Array.isArray(parsed.transactions))return false;
+    if(!parsed.pending)parsed.pending=[];
+    if(!parsed.investments)parsed.investments=[];
+    if(!parsed.loans)parsed.loans=[];
+    if(typeof parsed.balance!=="number")parsed.balance=0;
+    if(typeof parsed.maaserOwed!=="number")parsed.maaserOwed=0;
+    state=parsed;
+    invalidateAcCache();save();render();updateHeader();
+    return true;
+  }catch{return false;}
+}
 
-  // An HTML page = wrong/stale deployment or a login wall
-  if(/^\s*</.test(raw)){
-    showToast("Script returned a web page, not data — deploy a NEW version & set access to 'Anyone'.");return;
-  }
-
-  // Phase 2 — parse envelope, then the inner backup
-  let data,parsed;
-  try{data=JSON.parse(raw);}catch{showToast("Response wasn't valid JSON.");return;}
-  if(!data.success){showToast("Script error: "+(data.error||"unknown"));return;}
-  if(!data.backup){showToast("No backup in the Sheet yet — make one change to seed it.");return;}
-  try{parsed=JSON.parse(data.backup);}catch{showToast("Backup is corrupted — could not restore.");return;}
-  if(!parsed||!Array.isArray(parsed.transactions)){showToast("Backup format not recognised.");return;}
-
-  // Phase 3 — apply (isolated so a redraw error never reads as a 'connection' error)
-  if(!parsed.pending)parsed.pending=[];
-  if(!parsed.investments)parsed.investments=[];
-  if(!parsed.loans)parsed.loans=[];
-  if(typeof parsed.balance!=="number")parsed.balance=0;
-  if(typeof parsed.maaserOwed!=="number")parsed.maaserOwed=0;
-  state=parsed;
-  try{ invalidateAcCache();save();render();updateHeader(); }
-  catch(e){ showToast("Data restored, but redraw failed: "+(e&&e.message?e.message:""));return; }
-
+async function restoreFromCloud(){
+  if(!confirm("Restore from your D1 cloud backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
+  showToast("Fetching backup…");
+  const ok=await loadFromCloud();
+  if(!ok){showToast("Couldn't restore — sign in with your fingerprint first, or no backup exists yet.");return;}
   const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
   showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
 }
@@ -822,6 +855,7 @@ function load(){
 function save(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
   catch(e){if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')showToast("⚠️ Storage almost full! Export your data.");}
+  scheduleCloudSync();
 }
 function fmt(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -881,9 +915,10 @@ function startClearAll(){
 }
 async function biometricClearAll(){
   hide("clearStep1");
-  if(!window.PublicKeyCredential||!bioCredentialId){history.pushState({vba:"clearStep3"},"");show("clearStep3");return;}
+  const status=window.PublicKeyCredential?await authStatus():{hasCredential:false};
+  if(!status.hasCredential){history.pushState({vba:"clearStep3"},"");show("clearStep3");return;}
   showToast("Verify fingerprint...");
-  const ok=await assertBiometric();
+  const{ok}=await loginFingerprint();
   if(ok){history.pushState({vba:"clearStep3"},"");show("clearStep3");}
   else showToast("Fingerprint not recognised — cancelled.");
 }
@@ -1441,20 +1476,6 @@ function useCalcAmount(){
   hide("calcScreen");
 }
 
-// ── Poll Sheets ────────────────────────────────────────────────────
-async function pollPending(){
-  if(!settings.sheetsEnabled||!settings.scriptUrl)return;
-  try{
-    const res=await fetch(settings.scriptUrl+"?action=getPending"),data=await res.json();
-    if(!data.success||!data.items||data.items.length===0)return;
-    let added=0;
-    for(const item of data.items){
-      const exists=state.pending.some(p=>String(p.id)===String(item.id))||state.transactions.some(t=>String(t.id)===String(item.id));
-      if(!exists){state.pending.push({id:item.id,type:item.type||"expense",desc:item.desc||"Unknown",amount:roundMoney(parseFloat(item.amount)||0),source:item.source||"",date:item.date||today(),maaser:false});added++;}
-    }
-    if(added>0){save();renderPending();if("setAppBadge"in navigator)navigator.setAppBadge(state.pending.length).catch(()=>{});showToast(`${added} new item${added>1?"s":""} in pending queue`);}
-  }catch{}
-}
 function updateBadge(){if("setAppBadge"in navigator){state.pending.length>0?navigator.setAppBadge(state.pending.length).catch(()=>{}):navigator.clearAppBadge().catch(()=>{});}}
 
 // ── Init ───────────────────────────────────────────────────────────
@@ -1467,7 +1488,7 @@ document.getElementById("lockTitle").textContent=settings.appName;
 render();updateHeader();updateBadge();
 if(shouldLock())lock();else stampActivity();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
-pollPending();setInterval(pollPending,3*60*1000);
+loadFromCloud();
 </script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+name = "vba"
+compatibility_date = "2026-07-13"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vba-ledger-db"
+database_id = "f74576ba-ca12-4081-824c-a561342aba86"
