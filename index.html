@@ -804,9 +804,14 @@ async function pushToCloud(){
   }catch{}
 }
 // All mutations route through the full backup, so nothing is ever left out.
-function sheetAdd(tx){scheduleCloudSync();}
-function sheetDelete(id){scheduleCloudSync();}
-function sheetEdit(tx){scheduleCloudSync();}
+// These mark the change dirty (not just scheduled) since their call sites
+// mutate `state` directly and rely on render()'s local-only save for
+// persistence — without markDirty() here, a refresh before the debounced
+// push completes would have nothing to stop a stale cloud copy from
+// silently undoing the mutation.
+function sheetAdd(tx){markDirty();scheduleCloudSync();}
+function sheetDelete(id){markDirty();scheduleCloudSync();}
+function sheetEdit(tx){markDirty();scheduleCloudSync();}
 function sheetSyncAll(){
   if(!hasAnyData()){
     if(!confirm("Your local data is empty. Syncing now will ERASE the cloud backup. Continue?"))return;
