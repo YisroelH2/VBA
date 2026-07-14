@@ -110,6 +110,11 @@
   <button class="fp-btn" onclick="triggerBiometric()">👆</button>
   <div style="color:#94a3b8;font-size:14px;margin-top:-8px">Tap to unlock</div>
   <div class="fp-error" id="fpError"></div>
+  <button onclick="togglePasswordLogin()" style="background:none;border:none;color:#60a5fa;font-size:13px;cursor:pointer;margin-top:-4px">Use password instead</button>
+  <div id="pwLoginBox" class="hidden" style="display:flex;flex-direction:column;gap:8px;width:220px">
+    <input id="pwLoginInput" type="password" class="input" placeholder="Password" style="text-align:center" onkeydown="if(event.key==='Enter')submitPasswordLogin()" />
+    <button class="btn btn-dark" onclick="submitPasswordLogin()">Sign in</button>
+  </div>
 </div>
 
 <div id="root">
@@ -317,6 +322,14 @@
     <div class="setting-row">
       <div><div class="setting-label">Biometric sign-in</div><div id="fpSetupSub" class="setting-sub">Register this device's fingerprint/Face ID with your cloud account</div></div>
       <button id="fpSetupBtn" onclick="setupFingerprint()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">👆 Setup</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Cloud sign-in</div><div id="cloudAuthSub" class="setting-sub">Checking…</div></div>
+      <button id="cloudAuthBtn" onclick="toggleCloudSignInBox()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔑 Sign in</button>
+    </div>
+    <div id="cloudSignInBox" class="hidden" style="display:flex;gap:8px;margin:-4px 0 10px">
+      <input id="cloudPwInput" type="password" class="input" placeholder="Password" style="font-size:13px" onkeydown="if(event.key==='Enter')submitCloudPasswordLogin()" />
+      <button onclick="submitCloudPasswordLogin()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Go</button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV</div></div>
@@ -659,7 +672,7 @@ function openSettings(){
   document.getElementById("settingAppName").value=settings.appName||"";
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
-  refreshFingerprintSetting();
+  refreshFingerprintSetting();refreshCloudAuthSetting();
   show("settingsModal");
 }
 function applySettings(){
@@ -776,6 +789,67 @@ async function refreshFingerprintSetting(){
   if(!btn)return;
   if(status.hasCredential){btn.textContent="✓ Registered";sub.textContent="This account already has a fingerprint credential registered";}
   else{btn.textContent="👆 Setup";sub.textContent="Register this device's fingerprint/Face ID with your cloud account";}
+}
+
+// ── Password sign-in (fallback for devices without a fingerprint sensor) ──
+async function loginPassword(pw){
+  try{
+    const res=await fetch('/api/auth/password-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    if(res.ok)return{ok:true};
+    const j=await res.json().catch(()=>({}));
+    return{ok:false,error:j.error||"Sign-in failed"};
+  }catch{return{ok:false,error:"Network error"};}
+}
+
+function togglePasswordLogin(){
+  const box=document.getElementById("pwLoginBox");
+  box.classList.toggle("hidden");
+  if(!box.classList.contains("hidden"))document.getElementById("pwLoginInput").focus();
+}
+async function submitPasswordLogin(){
+  const input=document.getElementById("pwLoginInput");
+  const pw=input.value;
+  if(!pw)return;
+  const{ok,error}=await loginPassword(pw);
+  if(ok){
+    input.value="";
+    document.getElementById("pwLoginBox").classList.add("hidden");
+    await loadFromCloud();unlock();
+    if(window.PublicKeyCredential&&confirm("Signed in ✓. Set up fingerprint on this device for quicker unlocks next time?")){
+      await setupFingerprint();
+    }
+  }else{
+    document.getElementById("fpError").textContent=error;
+  }
+}
+
+function toggleCloudSignInBox(){
+  const box=document.getElementById("cloudSignInBox");
+  box.classList.toggle("hidden");
+  if(!box.classList.contains("hidden"))document.getElementById("cloudPwInput").focus();
+}
+async function submitCloudPasswordLogin(){
+  const input=document.getElementById("cloudPwInput");
+  const pw=input.value;
+  if(!pw)return;
+  const{ok,error}=await loginPassword(pw);
+  if(ok){
+    input.value="";
+    document.getElementById("cloudSignInBox").classList.add("hidden");
+    showToast("Signed in ✓");
+    await loadFromCloud();
+    refreshFingerprintSetting();refreshCloudAuthSetting();
+  }else{
+    showToast(error);
+  }
+}
+
+async function refreshCloudAuthSetting(){
+  const status=await authStatus();
+  const sub=document.getElementById("cloudAuthSub"),btn=document.getElementById("cloudAuthBtn");
+  if(!sub)return;
+  if(status.authenticated){sub.textContent="Signed in on this device";btn.textContent="✓ Signed in";}
+  else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.textContent="🔑 Sign in";}
 }
 
 // ── Cloud sync (D1) ───────────────────────────────────────────────────

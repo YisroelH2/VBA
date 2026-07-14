@@ -1,9 +1,4 @@
-import { verifySession } from "../../_lib/session.js";
-
-async function requireAuth(request, env) {
-  const session = await verifySession(request, env.SESSION_SECRET);
-  return !!session;
-}
+import { requireAuth } from "../../_lib/session.js";
 
 export async function onRequestGet({ request, env }) {
   if (!(await requireAuth(request, env))) {

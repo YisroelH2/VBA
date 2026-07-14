@@ -1,5 +1,5 @@
 import { generateRegistrationOptions } from "@simplewebauthn/server";
-import { USER_ID } from "../../_lib/session.js";
+import { USER_ID, requireAuth } from "../../_lib/session.js";
 import { rpConfig, saveChallenge } from "../../_lib/webauthn-config.js";
 
 export async function onRequestGet({ request, env }) {
@@ -8,6 +8,14 @@ export async function onRequestGet({ request, env }) {
   const existing = await env.DB.prepare(
     "SELECT credential_id FROM authenticators WHERE user_id = ?"
   ).bind(USER_ID).all();
+
+  // Anyone can bootstrap the very first credential, but once one exists,
+  // registering another device requires an already-authenticated session
+  // (via password or an existing fingerprint) — otherwise anyone who finds
+  // the URL on a device with a platform authenticator could self-enroll.
+  if (existing.results.length > 0 && !(await requireAuth(request, env))) {
+    return new Response(JSON.stringify({ error: "Sign in first to register a new device" }), { status: 401 });
+  }
 
   const options = await generateRegistrationOptions({
     rpName,

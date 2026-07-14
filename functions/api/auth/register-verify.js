@@ -1,10 +1,17 @@
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
-import { USER_ID, createSessionCookie } from "../../_lib/session.js";
+import { USER_ID, createSessionCookie, requireAuth } from "../../_lib/session.js";
 import { rpConfig, consumeChallenge } from "../../_lib/webauthn-config.js";
 
 export async function onRequestPost({ request, env }) {
   const { rpID, origin } = rpConfig(request);
   const { response, challengeId, deviceName } = await request.json();
+
+  const existingCount = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM authenticators WHERE user_id = ?"
+  ).bind(USER_ID).first();
+  if (existingCount.n > 0 && !(await requireAuth(request, env))) {
+    return new Response(JSON.stringify({ verified: false, error: "Sign in first to register a new device" }), { status: 401 });
+  }
 
   const expectedChallenge = await consumeChallenge(env.DB, challengeId, "register");
   if (!expectedChallenge) {

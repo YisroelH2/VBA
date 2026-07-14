@@ -54,4 +54,9 @@ async function verifySession(request, secret) {
   } catch { return null; }
 }
 
-export { USER_ID, createSessionCookie, verifySession };
+async function requireAuth(request, env) {
+  const session = await verifySession(request, env.SESSION_SECRET);
+  return !!session;
+}
+
+export { USER_ID, createSessionCookie, verifySession, requireAuth };
