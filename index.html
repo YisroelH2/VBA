@@ -771,10 +771,11 @@ async function triggerBiometric(){
   if(!status.hasCredential){
     const ok=await setupFingerprint();
     if(!ok){document.getElementById("fpError").textContent="Biometric setup failed.";return;}
+    _warnedNotSignedIn=false;
     await loadFromCloud();unlock();return;
   }
   const{ok}=await loginFingerprint();
-  if(ok){await loadFromCloud();unlock();}
+  if(ok){_warnedNotSignedIn=false;await loadFromCloud();unlock();}
   else document.getElementById("fpError").textContent="Fingerprint not recognised. Try again.";
 }
 function lock(){show("lockScreen");}
@@ -814,6 +815,7 @@ async function submitPasswordLogin(){
   if(ok){
     input.value="";
     document.getElementById("pwLoginBox").classList.add("hidden");
+    _warnedNotSignedIn=false;
     await loadFromCloud();unlock();
     if(window.PublicKeyCredential&&confirm("Signed in ✓. Set up fingerprint on this device for quicker unlocks next time?")){
       await setupFingerprint();
@@ -836,6 +838,7 @@ async function submitCloudPasswordLogin(){
   if(ok){
     input.value="";
     document.getElementById("cloudSignInBox").classList.add("hidden");
+    _warnedNotSignedIn=false;
     showToast("Signed in ✓");
     await loadFromCloud();
     refreshFingerprintSetting();refreshCloudAuthSetting();
@@ -870,10 +873,17 @@ function scheduleCloudSync(){
     pushToCloud();
   },1500);
 }
+// Warn at most once per page load when a sync silently fails for lack of a
+// session (expired after 12h, or never signed in) — otherwise this device
+// keeps editing local-only with no indication anything stopped syncing.
+let _warnedNotSignedIn=false;
 async function pushToCloud(){
   try{
     const res=await fetch('/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state),keepalive:true});
-    if(res.status===401)return; // not signed in yet — local cache is still authoritative on this device
+    if(res.status===401){
+      if(!_warnedNotSignedIn){_warnedNotSignedIn=true;showToast("Not signed in — changes are local-only. Sign in under Settings ▸ Cloud sign-in.");}
+      return;
+    }
     if(res.ok)markConfirmed();
   }catch{}
 }
