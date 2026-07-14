@@ -351,6 +351,7 @@
       <button class="btn btn-dark" onclick="applySettings()">Save Settings</button>
       <button class="btn btn-light" onclick="hide('settingsModal')">Cancel</button>
     </div>
+    <div style="text-align:center;font-size:10px;color:#cbd5e1;margin-top:10px" id="appVersionTag"></div>
   </div>
 </div>
 
@@ -661,6 +662,11 @@ const debouncedSearch=debounce(()=>renderTxList(),250);
 const STORAGE_KEY="vba_v3",SETTINGS_KEY="vba_settings",LOCK_KEY="vba_last_active";
 const LOCK_TIMEOUT=30*60*1000;
 
+// Bump on every deploy that changes index.html/sw.js so it's visible in
+// Settings whether a device has picked up the latest version yet.
+const APP_VERSION="2026-07-14.1";
+console.log("VBA build "+APP_VERSION);
+
 // ── Settings ───────────────────────────────────────────────────────
 let settings=loadSettings();
 function loadSettings(){
@@ -673,6 +679,7 @@ function openSettings(){
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
   refreshFingerprintSetting();refreshCloudAuthSetting();
+  document.getElementById("appVersionTag").textContent="Build "+APP_VERSION;
   show("settingsModal");
 }
 function applySettings(){

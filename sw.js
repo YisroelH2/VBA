@@ -1,4 +1,4 @@
-const CACHE = "vba-v2";
+const CACHE = "vba-v3";
 const FILES = ["./", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", e => {
@@ -13,10 +13,21 @@ self.addEventListener("activate", e => {
   self.clients.claim();
 });
 
+// Network-first: a fresh deploy is picked up immediately whenever the device
+// is online. The cache is only a fallback for offline PWA use, and is kept
+// warm with whatever was last successfully fetched.
 self.addEventListener("fetch", e => {
   if (new URL(e.request.url).pathname.startsWith("/api/")) {
     e.respondWith(fetch(e.request));
     return;
   }
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
+  );
 });
