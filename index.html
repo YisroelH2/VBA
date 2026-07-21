@@ -122,7 +122,10 @@
 
   <!-- ── HEADER (always visible) ── -->
   <div style="background:#1e293b;border-radius:16px;padding:20px;margin-bottom:12px;color:#fff">
-    <div style="font-size:12px;opacity:0.5;margin-bottom:2px">Total Net Worth</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;opacity:0.5;margin-bottom:2px">Total Net Worth</div>
+      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#fff;opacity:0.6;font-size:16px;cursor:pointer;padding:2px 4px">👁</button>
+    </div>
     <div id="netWorthDisplay" style="font-size:42px;font-weight:700;color:#4ade80">$0.00</div>
     <!-- Three-column breakdown -->
     <div style="display:flex;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1)">
@@ -963,6 +966,7 @@ let cpId=null,cpMaaser=true;
 let importOrder="topdown",txFilter="all",ctxId=null;
 let editingInvestmentId=null,editingLoanId=null,payingLoanId=null;
 let activeTab="ledger";
+let hideNumbers=localStorage.getItem("vba_hideNumbers")==="1";
 
 function load(){
   try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch{}
@@ -985,7 +989,14 @@ function save(){
   markDirty();
   scheduleCloudSync();
 }
-function fmt(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
+function fmt(n){if(hideNumbers)return"••••";return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
+function toggleHideNumbers(){
+  hideNumbers=!hideNumbers;
+  localStorage.setItem("vba_hideNumbers",hideNumbers?"1":"0");
+  document.getElementById("eyeToggleBtn").textContent=hideNumbers?"🙈":"👁";
+  updateHeader();render();
+  if(activeTab==="portfolio")renderPortfolio();
+}
 function today(){return new Date().toISOString().slice(0,10);}
 function show(id){document.getElementById(id).classList.remove("hidden");}
 function hide(id){document.getElementById(id).classList.add("hidden");}
@@ -1613,6 +1624,7 @@ document.getElementById("invDate").value=today();
 document.getElementById("loanDate").value=today();
 document.getElementById("appTitle").textContent="💳 "+settings.appName;
 document.getElementById("lockTitle").textContent=settings.appName;
+document.getElementById("eyeToggleBtn").textContent=hideNumbers?"🙈":"👁";
 render();updateHeader();updateBadge();
 if(shouldLock())lock();else stampActivity();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
