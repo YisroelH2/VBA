@@ -124,7 +124,7 @@
   <div style="background:#1e293b;border-radius:16px;padding:20px;margin-bottom:12px;color:#fff">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div style="font-size:12px;opacity:0.5;margin-bottom:2px">Total Net Worth</div>
-      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#fff;opacity:0.6;font-size:16px;cursor:pointer;padding:2px 4px">👁</button>
+      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#fff;opacity:0.6;cursor:pointer;padding:2px 4px;display:flex"></button>
     </div>
     <div id="netWorthDisplay" style="font-size:42px;font-weight:700;color:#4ade80">$0.00</div>
     <!-- Three-column breakdown -->
@@ -967,6 +967,8 @@ let importOrder="topdown",txFilter="all",ctxId=null;
 let editingInvestmentId=null,editingLoanId=null,payingLoanId=null;
 let activeTab="ledger";
 let hideNumbers=localStorage.getItem("vba_hideNumbers")==="1";
+const EYE_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
 function load(){
   try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch{}
@@ -993,7 +995,7 @@ function fmt(n){if(hideNumbers)return"••••";return new Intl.NumberFormat
 function toggleHideNumbers(){
   hideNumbers=!hideNumbers;
   localStorage.setItem("vba_hideNumbers",hideNumbers?"1":"0");
-  document.getElementById("eyeToggleBtn").textContent=hideNumbers?"🙈":"👁";
+  document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
   updateHeader();render();
   if(activeTab==="portfolio")renderPortfolio();
 }
@@ -1624,7 +1626,7 @@ document.getElementById("invDate").value=today();
 document.getElementById("loanDate").value=today();
 document.getElementById("appTitle").textContent="💳 "+settings.appName;
 document.getElementById("lockTitle").textContent=settings.appName;
-document.getElementById("eyeToggleBtn").textContent=hideNumbers?"🙈":"👁";
+document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
 render();updateHeader();updateBadge();
 if(shouldLock())lock();else stampActivity();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
