@@ -571,7 +571,8 @@
       <input id="invDate" class="input" type="date" style="flex:1" />
     </div>
     <input id="invCurrentValue" class="input" type="number" placeholder="Current value (optional — shows P&L)" min="0" style="margin-bottom:8px" />
-    <input id="invNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:14px" />
+    <input id="invNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:10px" />
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:14px">Amount invested moves out of your spendable balance.</div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveInvestment()">Save</button>
       <button class="btn btn-light" onclick="hide('addInvestmentModal')">Cancel</button>
@@ -1271,17 +1272,46 @@ function saveInvestment(){
   if(!name||isNaN(amountIn)||amountIn<=0){showToast("Please enter a name and amount");return;}
   if(editingInvestmentId){
     const inv=state.investments.find(i=>i.id===editingInvestmentId);
-    if(inv){inv.name=name;inv.brokerage=brokerage;inv.amountIn=amountIn;inv.currentValue=currentValue;inv.date=date;inv.notes=notes;}
+    if(inv){
+      // Investments created after this feature carry a linked ledger transaction
+      // that pulled the money out of spendable; keep it in sync on edit so the
+      // two don't drift apart. Older investments (no txId) never had one, so
+      // editing them still leaves spendable alone, as before.
+      if(inv.txId){
+        const tx=state.transactions.find(t=>t.id===inv.txId);
+        if(tx){
+          const oldDelta=tx.delta,newDelta=-amountIn;
+          tx.desc=`📈 Invested in ${name}`;tx.amount=amountIn;tx.delta=newDelta;tx.date=date;
+          state.balance=roundMoney(state.balance+(newDelta-oldDelta));
+          recalcBalances();
+        }
+      }
+      inv.name=name;inv.brokerage=brokerage;inv.amountIn=amountIn;inv.currentValue=currentValue;inv.date=date;inv.notes=notes;
+    }
   }else{
-    state.investments.push({id:Date.now(),name,brokerage,amountIn,currentValue,date,notes});
+    const invId=Date.now();
+    const delta=-amountIn;
+    const tx={id:invId+1,type:"expense",desc:`📈 Invested in ${name}`,amount:amountIn,delta,date,balance:roundMoney(state.balance+delta),maaser:false,maaserAmt:0};
+    state.transactions.unshift(tx);state.balance=roundMoney(state.balance+delta);
+    invalidateAcCache();
+    state.investments.push({id:invId,name,brokerage,amountIn,currentValue,date,notes,txId:tx.id});
   }
-  save();hide("addInvestmentModal");renderPortfolio();updateHeader();
+  save();hide("addInvestmentModal");renderPortfolio();updateHeader();render();
   showToast(editingInvestmentId?"Investment updated ✓":"Investment added ✓");editingInvestmentId=null;
 }
 function deleteInvestment(id){
   if(!confirm("Delete this investment?"))return;
+  const inv=state.investments.find(i=>i.id===id);
+  if(inv&&inv.txId){
+    const idx=state.transactions.findIndex(t=>t.id===inv.txId);
+    if(idx!==-1){
+      state.balance=roundMoney(state.balance-state.transactions[idx].delta);
+      state.transactions.splice(idx,1);
+      recalcBalances();
+    }
+  }
   state.investments=state.investments.filter(i=>i.id!==id);
-  save();renderPortfolio();updateHeader();showToast("Investment deleted");
+  save();renderPortfolio();updateHeader();render();showToast("Investment deleted");
 }
 function renderInvestments(){
   const list=document.getElementById("investmentList"),summary=document.getElementById("investSummary");
