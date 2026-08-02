@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
   <title>Virtual Bank Account</title>
@@ -18,14 +18,17 @@
       --brass: #a1721f;
       --rule: rgba(161,114,31,0.16);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { background: #f6f1e4; }
     body {
       background: #f6f1e4;
       background-image: repeating-linear-gradient(180deg, transparent, transparent 27px, var(--rule) 28px);
-      font-family: var(--sans); padding: 16px; padding-bottom: 150px; color: #241c14;
+      font-family: var(--sans);
+      padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(150px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+      color: #241c14;
     }
     #root { max-width: 520px; margin: 0 auto; }
-    button { cursor: pointer; font-family: inherit; }
+    button { cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     button:focus-visible, input:focus-visible, .checkbox:focus-visible, .small-check:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
     input, textarea, select { font-family: inherit; }
     /* Ledger numerals: tabular, serif, used wherever money/figures render */
@@ -58,7 +61,7 @@
     .small-check.checked { border-color: #a1721f; background: #a1721f; }
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #2a2013; color: #fdf9ef; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
-    #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
+    #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); }
     .badge { display: inline-flex; align-items: center; justify-content: center; background: #a8432f; color: #fdf9ef; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
     .ac-wrap { position: relative; margin-bottom: 8px; }
     .ac-wrap .input { margin-bottom: 0; }
@@ -86,7 +89,7 @@
     #ctxSheet .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-radius: 16px 16px 0 0; padding: 16px; max-width: 520px; margin: 0 auto; }
     .ctx-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 12px; background: #f6f0df; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; cursor: pointer; text-align: left; }
     #calcScreen { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, #221a12 0%, #16110c 55%, #100c08 100%); z-index: 400; display: flex; flex-direction: column; align-items: center; }
-    .calc-top { flex: 0 0 auto; width: 100%; max-width: 460px; padding: 18px 20px 4px; display: flex; justify-content: space-between; align-items: center; }
+    .calc-top { flex: 0 0 auto; width: 100%; max-width: 460px; padding: calc(18px + env(safe-area-inset-top)) 20px 4px; display: flex; justify-content: space-between; align-items: center; }
     .calc-close-btn { background: rgba(253,249,239,0.06); border: 1px solid rgba(201,161,90,0.25); border-radius: 50%; width: 34px; height: 34px; color: #d9c9a3; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .calc-title { color: #9c8f76; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
     .calc-display-wrap { flex: 1; width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 8px 24px 16px; border-bottom: 1px solid rgba(201,161,90,0.18); }
@@ -99,11 +102,11 @@
     .c-op  { background: linear-gradient(160deg, #e4c07f 0%, #a1721f 100%); color: #2a1d0c; border: 1px solid rgba(255,235,190,0.4); font-weight: 700; }
     .c-fn  { background: linear-gradient(160deg, #6b6252 0%, #4a4335 100%); color: #fdf9ef; border: 1px solid rgba(253,249,239,0.12); font-size: 19px; font-family: var(--sans); font-weight: 600; }
     .c-zero { aspect-ratio: auto; height: 70px; border-radius: 35px; grid-column: span 2; justify-content: flex-start; padding-left: 28px; }
-    .calc-use { width: 100%; max-width: 428px; margin: 14px 16px 20px; padding: 16px; background: linear-gradient(160deg, #e4c07f 0%, #a1721f 100%); color: #2a1d0c; border: 1px solid rgba(255,235,190,0.4); border-radius: 8px; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+    .calc-use { width: 100%; max-width: 428px; margin: 14px 16px calc(20px + env(safe-area-inset-bottom)); padding: 16px; background: linear-gradient(160deg, #e4c07f 0%, #a1721f 100%); color: #2a1d0c; border: 1px solid rgba(255,235,190,0.4); border-radius: 8px; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
     #clearStep3 { position: fixed; inset: 0; background: #fdf9ef; z-index: 500; display: flex; flex-direction: column; padding: 24px; }
     /* Tab bar */
-    #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-top: 1px solid #ddd3ba; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; }
-    .tab-btn { flex: 1; padding: 10px 0 12px; background: none; border: none; border-top: 2px solid transparent; font-size: 10px; font-weight: 700; color: #8f8570; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.04em; text-transform: uppercase; }
+    #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-top: 1px solid #ddd3ba; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); }
+    .tab-btn { flex: 1; padding: 10px 0 12px; background: none; border: none; border-top: 2px solid transparent; font-size: 10px; font-weight: 700; color: #8f8570; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.04em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; }
     .tab-btn.active { color: #1c2a20; border-top-color: #a1721f; }
     .tab-btn .tab-icon { font-size: 22px; }
     /* Portfolio */
@@ -118,7 +121,7 @@
     .progress-bar { background: #ddd3ba; border-radius: 4px; height: 6px; overflow: hidden; margin: 6px 0; }
     .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
     /* Calc FAB - above tab bar */
-    #calcFab { position: fixed; bottom: 70px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1c2a20; color: #fdf9ef; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    #calcFab { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom)); right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1c2a20; color: #fdf9ef; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
     .filter-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #ddd3ba; background: #fdf9ef; font-size: 12px; font-weight: 600; color: #6e6553; cursor: pointer; }
     .filter-tab.active { background: #1c2a20; color: #fdf9ef; border-color: #1c2a20; }
   </style>
@@ -129,7 +132,7 @@
 <div id="lockScreen" class="hidden">
   <div style="color:#c9a15a"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
   <div style="color:#fdf9ef;font-size:20px;font-weight:700;font-family:var(--serif)" id="lockTitle">Virtual Bank Account</div>
-  <div style="color:#8f8570;font-size:14px;text-align:center;padding:0 32px">Locked after 30 minutes of inactivity</div>
+  <div style="color:#8f8570;font-size:14px;text-align:center;padding:0 32px" id="lockSubtitle">Locked after inactivity</div>
   <button id="lockContinueBtn" class="btn btn-dark" onclick="unlock()" style="margin-top:12px;padding:12px 28px">Tap to continue</button>
   <button id="lockFpBtn" class="hidden" onclick="triggerLockFingerprint()" style="background:#2b3a2e;border:2px solid #4a4335;border-radius:50%;width:74px;height:74px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:8px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fdf9ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg></button>
   <div id="lockFpError" style="color:#e08a76;font-size:13px;min-height:18px;text-align:center"></div>
@@ -345,6 +348,10 @@
     <div class="setting-row">
       <div><div class="setting-label">Lock screen after idle</div><div class="setting-sub">Privacy screen — not encryption</div></div>
       <label class="toggle-wrap"><input type="checkbox" id="settingLock"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Lock after (minutes)</div><div class="setting-sub">How long idle before it locks</div></div>
+      <input id="settingLockMinutes" class="input" type="number" min="1" max="240" style="width:70px;font-size:13px" placeholder="30" />
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Fingerprint unlock</div><div id="fpUnlockSub" class="setting-sub">Checking…</div></div>
@@ -720,7 +727,6 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 const debouncedSearch=debounce(()=>renderTxList(),250);
 
 const STORAGE_KEY="vba_v3",SETTINGS_KEY="vba_settings",LOCK_KEY="vba_last_active";
-const LOCK_TIMEOUT=30*60*1000;
 
 // Bump on every deploy that changes index.html/sw.js so it's visible in
 // Settings whether a device has picked up the latest version yet.
@@ -731,13 +737,14 @@ console.log("VBA build "+APP_VERSION);
 let settings=loadSettings();
 function loadSettings(){
   try{const r=localStorage.getItem(SETTINGS_KEY);if(r)return JSON.parse(r);}catch{}
-  return{appName:"Virtual Bank Account",lockEnabled:true,maaserDefault:true};
+  return{appName:"Virtual Bank Account",lockEnabled:true,maaserDefault:true,lockMinutes:30};
 }
 function saveSettings(){localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}
 function openSettings(){
   document.getElementById("settingAppName").value=settings.appName||"";
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
+  document.getElementById("settingLockMinutes").value=settings.lockMinutes||30;
   refreshCloudAuthSetting();refreshFpSetting();
   document.getElementById("appVersionTag").textContent="Build "+APP_VERSION;
   show("settingsModal");
@@ -746,6 +753,8 @@ function applySettings(){
   settings.appName=document.getElementById("settingAppName").value.trim()||"Virtual Bank Account";
   settings.maaserDefault=document.getElementById("settingMaaserDefault").checked;
   settings.lockEnabled=document.getElementById("settingLock").checked;
+  const lockMin=parseInt(document.getElementById("settingLockMinutes").value);
+  settings.lockMinutes=(!isNaN(lockMin)&&lockMin>=1)?lockMin:30;
   saveSettings();
   const val=parseFloat(document.getElementById("newBalanceInput").value);
   if(!isNaN(val)&&val>=0){
@@ -762,9 +771,14 @@ function applySettings(){
 }
 
 // ── Lock screen (local privacy curtain) ───────────────────────────────
-const isPWA=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+// Gates every app open/return, not just standalone-PWA installs — the
+// point is "fingerprint to get into the app," regardless of how it's launched.
 function stampActivity(){localStorage.setItem(LOCK_KEY,Date.now().toString());}
-function shouldLock(){if(!settings.lockEnabled||!isPWA)return false;return Date.now()-parseInt(localStorage.getItem(LOCK_KEY)||"0")>LOCK_TIMEOUT;}
+function shouldLock(){
+  if(!settings.lockEnabled)return false;
+  const timeoutMs=(settings.lockMinutes||30)*60*1000;
+  return Date.now()-parseInt(localStorage.getItem(LOCK_KEY)||"0")>timeoutMs;
+}
 
 async function authStatus(){
   try{const res=await fetch('/api/auth/status');return await res.json();}
@@ -777,6 +791,7 @@ async function authStatus(){
 // that mis-reads a finger can never lock you out of your own data.
 function lock(){
   show("lockScreen");
+  document.getElementById("lockSubtitle").textContent=`Locked after ${settings.lockMinutes||30} minutes of inactivity`;
   const fp=fpSupported()&&!!getFpCredentialId();
   document.getElementById("lockContinueBtn").classList.toggle("hidden",fp);
   document.getElementById("lockFpBtn").classList.toggle("hidden",!fp);
@@ -1019,6 +1034,22 @@ function switchTab(tab){
   document.getElementById("tabLedger").classList.toggle("active",tab==="ledger");
   document.getElementById("tabPortfolio").classList.toggle("active",tab==="portfolio");
   if(tab==="portfolio")renderPortfolio();
+}
+
+// ── Swipe between tabs ────────────────────────────────────────────
+let _swipeX=0,_swipeY=0,_swiping=false;
+function swipeStart(e){if(e.touches.length!==1)return;_swipeX=e.touches[0].clientX;_swipeY=e.touches[0].clientY;_swiping=true;}
+function swipeEnd(e){
+  if(!_swiping)return;_swiping=false;
+  const t=e.changedTouches[0],dx=t.clientX-_swipeX,dy=t.clientY-_swipeY;
+  if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
+  if(dx<0&&activeTab==="ledger")switchTab("portfolio");
+  else if(dx>0&&activeTab==="portfolio")switchTab("ledger");
+}
+for(const id of["ledgerView","portfolioView"]){
+  const el=document.getElementById(id);
+  el.addEventListener("touchstart",swipeStart,{passive:true});
+  el.addEventListener("touchend",swipeEnd,{passive:true});
 }
 
 // ── Header / Net Worth ─────────────────────────────────────────────

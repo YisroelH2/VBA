@@ -4,8 +4,8 @@
   "description": "Personal ledger with Maaser tracking",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#1e293b",
+  "background_color": "#f6f1e4",
+  "theme_color": "#1c2a20",
   "orientation": "portrait",
   "icons": [
     {
