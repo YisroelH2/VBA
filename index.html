@@ -136,7 +136,7 @@
   <button id="lockContinueBtn" class="btn btn-dark" onclick="unlock()" style="margin-top:12px;padding:12px 28px">Tap to continue</button>
   <button id="lockFpBtn" class="hidden" onclick="triggerLockFingerprint()" style="background:#2b3a2e;border:2px solid #4a4335;border-radius:50%;width:74px;height:74px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:8px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fdf9ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg></button>
   <div id="lockFpError" style="color:#e08a76;font-size:13px;min-height:18px;text-align:center"></div>
-  <button id="lockFpFallback" class="hidden" onclick="unlock()" style="background:none;border:none;color:#5f8a95;font-size:13px;cursor:pointer;margin-top:-8px">Tap to continue instead</button>
+  <button id="lockFpFallback" class="hidden" onclick="signInWithGoogle()" style="background:none;border:none;color:#5f8a95;font-size:13px;cursor:pointer;margin-top:-8px">Try another way — sign in with Google</button>
 </div>
 
 <div id="root">
@@ -1699,6 +1699,8 @@ const authParams=new URLSearchParams(location.search);
 if(authParams.has("signedIn")){
   showToast("Signed in ✓");
   history.replaceState({},"",location.pathname);
+  unlock(); // covers the lock screen's "Try another way" path — a fresh
+            // Google sign-in counts as getting back in, not another lock.
   loadFromCloud().then(()=>refreshCloudAuthSetting());
 }else{
   if(authParams.has("authError")){
