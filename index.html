@@ -7,110 +7,133 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
   <title>Virtual Bank Account</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1e293b" />
+  <meta name="theme-color" content="#1c2a20" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style>
+    :root {
+      --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+      --sans: system-ui, -apple-system, sans-serif;
+      --ink: #1c2a20;
+      --brass: #a1721f;
+      --rule: rgba(161,114,31,0.16);
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f9fafb; font-family: system-ui, sans-serif; padding: 16px; padding-bottom: 150px; }
+    body {
+      background: #f6f1e4;
+      background-image: repeating-linear-gradient(180deg, transparent, transparent 27px, var(--rule) 28px);
+      font-family: var(--sans); padding: 16px; padding-bottom: 150px; color: #241c14;
+    }
     #root { max-width: 520px; margin: 0 auto; }
     button { cursor: pointer; font-family: inherit; }
+    button:focus-visible, input:focus-visible, .checkbox:focus-visible, .small-check:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
     input, textarea, select { font-family: inherit; }
-    .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; user-select: none; -webkit-user-select: none; }
-    .card.starred { border-color: #fbbf24; background: #fffdf5; }
-    .pending-card { background: #fff; border: 1.5px solid #fbbf24; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+    /* Ledger numerals: tabular, serif, used wherever money/figures render */
+    #netWorthDisplay, #balanceDisplay, #investedDisplay, #lentOutDisplay, #maaserDisplay,
+    #totalIn, #totalOut, #ovCostBasis, #ovCurrValue, #ovPL,
+    .card, .pending-card, .inv-card, .loan-card, #ctxSheet .sheet, .modal, .calc-display, .calc-prev {
+      font-variant-numeric: tabular-nums;
+    }
+    #netWorthDisplay, #balanceDisplay, #investedDisplay, #lentOutDisplay, #maaserDisplay,
+    #totalIn, #totalOut, #ovCostBasis, #ovCurrValue, #ovPL, .calc-display, .calc-prev,
+    .card > div:last-child > div:first-child, .inv-card, .loan-card, .pending-card {
+      font-family: var(--serif);
+    }
+    .card { background: #fdf9ef; border: 1px solid #ece2c8; border-radius: 3px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; user-select: none; -webkit-user-select: none; border-left: 3px solid #ece2c8; box-shadow: 0 1px 2px rgba(28,42,32,0.04); }
+    .card.starred { border-left-color: #c9a15a; background: #faf4de; }
+    .pending-card { background: #fdf9ef; border: 1px dashed #c9a15a; border-radius: 3px; padding: 12px 14px; margin-bottom: 8px; }
     .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; overflow-y: auto; }
-    .modal { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; }
+    .modal { background: #fdf9ef; border-radius: 6px; padding: 20px; width: 100%; max-width: 440px; border-top: 3px solid var(--brass); box-shadow: 0 12px 32px rgba(28,42,32,0.22); }
     .row { display: flex; gap: 8px; margin-bottom: 10px; }
-    .input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; }
-    .btn { border: none; border-radius: 8px; padding: 9px; font-weight: 600; font-size: 13px; }
-    .btn-dark { background: #1e293b; color: #fff; flex: 1; }
-    .btn-light { background: #f1f5f9; color: #333; flex: 1; }
-    .type-btn { flex: 1; padding: 7px 0; border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 600; font-size: 13px; background: #fff; color: #64748b; }
-    .type-btn.income.active { border-color: #16a34a; background: #dcfce7; color: #16a34a; }
-    .type-btn.expense.active { border-color: #dc2626; background: #fee2e2; color: #dc2626; }
-    .checkbox { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #cbd5e1; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
-    .checkbox.checked { border-color: #b45309; background: #b45309; }
-    .small-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #cbd5e1; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; vertical-align: middle; margin-right: 4px; }
-    .small-check.checked { border-color: #b45309; background: #b45309; }
+    .input { width: 100%; padding: 8px 10px; border-radius: 4px; border: 1px solid #c7bc9c; font-size: 14px; background: #fdf9ef; }
+    .btn { border: none; border-radius: 4px; padding: 9px; font-weight: 600; font-size: 13px; letter-spacing: 0.01em; }
+    .btn-dark { background: #1c2a20; color: #fdf9ef; flex: 1; }
+    .btn-light { background: #ece2c8; color: #2a2013; flex: 1; }
+    .type-btn { flex: 1; padding: 7px 0; border: 2px solid #ddd3ba; border-radius: 4px; font-weight: 600; font-size: 13px; background: #fdf9ef; color: #6e6553; }
+    .type-btn.income.active { border-color: #3f7d54; background: #dfe9dc; color: #3f7d54; }
+    .type-btn.expense.active { border-color: #a8432f; background: #f0ddd4; color: #a8432f; }
+    .checkbox { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #c7bc9c; background: #fdf9ef; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+    .checkbox.checked { border-color: #a1721f; background: #a1721f; }
+    .small-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #c7bc9c; background: #fdf9ef; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; vertical-align: middle; margin-right: 4px; }
+    .small-check.checked { border-color: #a1721f; background: #a1721f; }
     .hidden { display: none !important; }
-    #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
-    #lockScreen { position: fixed; inset: 0; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
-    #lockScreen .fp-btn { background: #334155; border: 2px solid #475569; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
-    #lockScreen .fp-error { color: #f87171; font-size: 13px; margin-top: 4px; min-height: 20px; }
-    .badge { display: inline-flex; align-items: center; justify-content: center; background: #dc2626; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
+    #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #2a2013; color: #fdf9ef; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
+    #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
+    #lockScreen .fp-btn { background: #2b3a2e; border: 2px solid #4a4335; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
+    #lockScreen .fp-error { color: #e08a76; font-size: 13px; margin-top: 4px; min-height: 20px; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; background: #a8432f; color: #fdf9ef; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
     .ac-wrap { position: relative; margin-bottom: 8px; }
     .ac-wrap .input { margin-bottom: 0; }
-    .ac-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; z-index: 200; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .ac-item { padding: 10px 12px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #f1f5f9; }
+    .ac-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #fdf9ef; border: 1px solid #c7bc9c; border-top: none; border-radius: 0 0 4px 4px; z-index: 200; max-height: 180px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .ac-item { padding: 10px 12px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #ece2c8; }
     .ac-item:last-child { border-bottom: none; }
-    .ac-item:hover, .ac-item.active { background: #f1f5f9; }
+    .ac-item:hover, .ac-item.active { background: #ece2c8; }
     .ac-item .ac-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ac-item .ac-meta { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+    .ac-item .ac-meta { font-size: 11px; color: #8f8570; white-space: nowrap; }
     .ac-item .ac-type { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
-    .ac-type.income { background: #dcfce7; color: #16a34a; }
-    .ac-type.expense { background: #fee2e2; color: #dc2626; }
-    .setting-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #f1f5f9; gap: 12px; }
+    .ac-type.income { background: #dfe9dc; color: #3f7d54; }
+    .ac-type.expense { background: #f0ddd4; color: #a8432f; }
+    .setting-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #ece2c8; gap: 12px; }
     .setting-row:last-child { border-bottom: none; }
-    .setting-label { font-size: 14px; font-weight: 600; color: #1e293b; }
-    .setting-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .setting-label { font-size: 14px; font-weight: 600; color: #1c2a20; }
+    .setting-sub { font-size: 12px; color: #8f8570; margin-top: 2px; }
     .toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; margin-top: 2px; }
     .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
-    .toggle-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
-    .toggle-wrap input:checked + .toggle-slider { background: #16a34a; }
-    .toggle-slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+    .toggle-slider { position: absolute; inset: 0; background: #c7bc9c; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .toggle-wrap input:checked + .toggle-slider { background: #3f7d54; }
+    .toggle-slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fdf9ef; border-radius: 50%; transition: transform 0.2s; }
     .toggle-wrap input:checked + .toggle-slider:before { transform: translateX(20px); }
-    .month-header { font-size: 11px; font-weight: 700; color: #94a3b8; padding: 12px 4px 4px; text-transform: uppercase; letter-spacing: 0.07em; }
+    .month-header { font-size: 11px; font-weight: 700; color: #8f8570; padding: 12px 4px 4px; text-transform: uppercase; letter-spacing: 0.07em; }
     #ctxSheet { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.4); }
-    #ctxSheet .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 16px 16px 0 0; padding: 16px; max-width: 520px; margin: 0 auto; }
-    .ctx-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 12px; background: #f8fafc; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; cursor: pointer; text-align: left; }
-    #calcScreen { position: fixed; inset: 0; background: #1c1c1e; z-index: 400; display: flex; flex-direction: column; }
+    #ctxSheet .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-radius: 16px 16px 0 0; padding: 16px; max-width: 520px; margin: 0 auto; }
+    .ctx-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 12px; background: #f6f0df; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; cursor: pointer; text-align: left; }
+    #calcScreen { position: fixed; inset: 0; background: #1b1611; z-index: 400; display: flex; flex-direction: column; }
     .calc-top { flex: 0 0 auto; padding: 16px 20px 4px; display: flex; justify-content: space-between; align-items: center; }
     .calc-display-wrap { flex: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 8px 20px 12px; }
-    .calc-prev { font-size: 22px; color: #666; min-height: 28px; }
-    .calc-display { font-size: 64px; font-weight: 200; color: #fff; word-break: break-all; line-height: 1.1; }
+    .calc-prev { font-size: 22px; color: #a89c86; min-height: 28px; }
+    .calc-display { font-size: 64px; font-weight: 200; color: #fdf9ef; word-break: break-all; line-height: 1.1; }
     .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 12px; }
     .calc-btn { height: 72px; border: none; border-radius: 50%; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
     .calc-btn:active { opacity: 0.7; }
-    .c-num { background: #333; color: #fff; }
-    .c-op  { background: #f1a500; color: #fff; }
-    .c-fn  { background: #a5a5a5; color: #000; }
+    .c-num { background: #2a2013; color: #fdf9ef; }
+    .c-op  { background: #c9a15a; color: #fdf9ef; }
+    .c-fn  { background: #93876f; color: #000; }
     .c-zero { border-radius: 36px; grid-column: span 2; justify-content: flex-start; padding-left: 26px; }
-    .calc-use { margin: 8px 12px 16px; padding: 16px; background: #16a34a; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
-    #clearStep3 { position: fixed; inset: 0; background: #fff; z-index: 500; display: flex; flex-direction: column; padding: 24px; }
+    .calc-use { margin: 8px 12px 16px; padding: 16px; background: #3f7d54; color: #fdf9ef; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    #clearStep3 { position: fixed; inset: 0; background: #fdf9ef; z-index: 500; display: flex; flex-direction: column; padding: 24px; }
     /* Tab bar */
-    #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e2e8f0; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; }
-    .tab-btn { flex: 1; padding: 10px 0 12px; background: none; border: none; font-size: 10px; font-weight: 700; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.04em; text-transform: uppercase; }
-    .tab-btn.active { color: #1e293b; }
+    #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-top: 1px solid #ddd3ba; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; }
+    .tab-btn { flex: 1; padding: 10px 0 12px; background: none; border: none; border-top: 2px solid transparent; font-size: 10px; font-weight: 700; color: #8f8570; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .tab-btn.active { color: #1c2a20; border-top-color: #a1721f; }
     .tab-btn .tab-icon { font-size: 22px; }
     /* Portfolio */
-    .port-section { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .port-section { background: #fdf9ef; border-radius: 6px; padding: 14px; margin-bottom: 14px; border: 1px solid #ece2c8; }
     .port-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .port-section-title { font-size: 15px; font-weight: 700; color: #1e293b; }
-    .port-section-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-    .inv-card { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
-    .loan-card { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
-    .loan-card.overdue { border-color: #fca5a5; background: #fff5f5; }
+    .port-section-title { font-size: 15px; font-weight: 700; color: #1c2a20; font-family: var(--serif); }
+    .port-section-sub { font-size: 12px; color: #6e6553; margin-top: 2px; }
+    .inv-card { background: #f6f0df; border-radius: 4px; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd3ba; }
+    .loan-card { background: #f6f0df; border-radius: 4px; padding: 12px; margin-bottom: 8px; border: 1px solid #ddd3ba; }
+    .loan-card.overdue { border-color: #cf9a86; background: #f8ede6; }
     .loan-card.paid { opacity: 0.65; }
-    .progress-bar { background: #e2e8f0; border-radius: 4px; height: 6px; overflow: hidden; margin: 6px 0; }
+    .progress-bar { background: #ddd3ba; border-radius: 4px; height: 6px; overflow: hidden; margin: 6px 0; }
     .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
     /* Calc FAB - above tab bar */
-    #calcFab { position: fixed; bottom: 70px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1e293b; color: #fff; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .filter-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; }
-    .filter-tab.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+    #calcFab { position: fixed; bottom: 70px; right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1c2a20; color: #fdf9ef; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .filter-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #ddd3ba; background: #fdf9ef; font-size: 12px; font-weight: 600; color: #6e6553; cursor: pointer; }
+    .filter-tab.active { background: #1c2a20; color: #fdf9ef; border-color: #1c2a20; }
   </style>
 </head>
 <body>
 
 <!-- Lock Screen -->
 <div id="lockScreen" class="hidden">
-  <div style="font-size:56px">💳</div>
-  <div style="color:#fff;font-size:20px;font-weight:700" id="lockTitle">Virtual Bank Account</div>
-  <div style="color:#94a3b8;font-size:14px;text-align:center;padding:0 32px">Locked after 30 minutes of inactivity</div>
-  <button class="fp-btn" onclick="triggerBiometric()">👆</button>
-  <div style="color:#94a3b8;font-size:14px;margin-top:-8px">Tap to unlock</div>
+  <div style="color:#c9a15a"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+  <div style="color:#fdf9ef;font-size:20px;font-weight:700;font-family:var(--serif)" id="lockTitle">Virtual Bank Account</div>
+  <div style="color:#8f8570;font-size:14px;text-align:center;padding:0 32px">Locked after 30 minutes of inactivity</div>
+  <button class="fp-btn" onclick="triggerBiometric()"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fdf9ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg></button>
+  <div style="color:#8f8570;font-size:14px;margin-top:-8px">Tap to unlock</div>
   <div class="fp-error" id="fpError"></div>
-  <button onclick="togglePasswordLogin()" style="background:none;border:none;color:#60a5fa;font-size:13px;cursor:pointer;margin-top:-4px">Use password instead</button>
+  <button onclick="togglePasswordLogin()" style="background:none;border:none;color:#5f8a95;font-size:13px;cursor:pointer;margin-top:-4px">Use password instead</button>
   <div id="pwLoginBox" class="hidden" style="display:flex;flex-direction:column;gap:8px;width:220px">
     <input id="pwLoginInput" type="password" class="input" placeholder="Password" style="text-align:center" onkeydown="if(event.key==='Enter')submitPasswordLogin()" />
     <button class="btn btn-dark" onclick="submitPasswordLogin()">Sign in</button>
@@ -118,34 +141,34 @@
 </div>
 
 <div id="root">
-  <div style="text-align:center;font-weight:700;font-size:18px;color:#1e293b;margin-bottom:12px" id="appTitle">💳 Virtual Bank Account</div>
+  <div style="text-align:center;font-weight:700;font-size:13px;color:#7a5a1f;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.14em;font-family:var(--serif)" id="appTitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Virtual Bank Account</div>
 
   <!-- ── HEADER (always visible) ── -->
-  <div style="background:#1e293b;border-radius:16px;padding:20px;margin-bottom:12px;color:#fff">
+  <div style="position:relative;background:#1c2a20;border-radius:6px;padding:22px 20px 20px;margin-bottom:12px;color:#fdf9ef;border-top:3px solid #a1721f;box-shadow:0 8px 24px rgba(28,42,32,0.18)">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:12px;opacity:0.5;margin-bottom:2px">Total Net Worth</div>
-      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#fff;opacity:0.6;cursor:pointer;padding:2px 4px;display:flex"></button>
+      <div style="font-size:11px;opacity:0.55;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.14em;font-weight:600">Total Net Worth</div>
+      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#c9a15a;opacity:0.75;cursor:pointer;padding:2px 4px;display:flex"></button>
     </div>
-    <div id="netWorthDisplay" style="font-size:42px;font-weight:700;color:#4ade80">$0.00</div>
+    <div id="netWorthDisplay" style="font-size:44px;font-weight:700;color:#7fc99a;letter-spacing:-0.01em">$0.00</div>
     <!-- Three-column breakdown -->
-    <div style="display:flex;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1)">
-      <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1);padding-right:4px">
-        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">💳 SPENDABLE</div>
-        <div id="balanceDisplay" style="font-size:16px;font-weight:600;color:#4ade80">$0.00</div>
+    <div style="display:flex;margin-top:14px;padding-top:12px;border-top:1px solid rgba(161,114,31,0.35)">
+      <div style="flex:1;text-align:center;border-right:1px solid rgba(161,114,31,0.35);padding-right:4px">
+        <div style="font-size:10px;opacity:0.55;margin-bottom:3px;letter-spacing:0.04em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg> SPENDABLE</div>
+        <div id="balanceDisplay" style="font-size:16px;font-weight:600;color:#7fc99a">$0.00</div>
       </div>
-      <div style="flex:1;text-align:center;border-right:1px solid rgba(255,255,255,0.1)">
-        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">📈 INVESTED</div>
-        <div id="investedDisplay" style="font-size:16px;font-weight:600;color:#60a5fa">$0.00</div>
+      <div style="flex:1;text-align:center;border-right:1px solid rgba(161,114,31,0.35)">
+        <div style="font-size:10px;opacity:0.55;margin-bottom:3px;letter-spacing:0.04em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="3,17 9,11 13,15 21,7"/><polyline points="15,7 21,7 21,13"/></svg> INVESTED</div>
+        <div id="investedDisplay" style="font-size:16px;font-weight:600;color:#8fb8c2">$0.00</div>
       </div>
       <div style="flex:1;text-align:center;padding-left:4px">
-        <div style="font-size:10px;opacity:0.5;margin-bottom:3px">💸 LENT OUT</div>
-        <div id="lentOutDisplay" style="font-size:16px;font-weight:600;color:#f97316">$0.00</div>
+        <div style="font-size:10px;opacity:0.55;margin-bottom:3px;letter-spacing:0.04em"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><polyline points="7,17 17,7"/><polyline points="9,7 17,7 17,15"/></svg> LENT OUT</div>
+        <div id="lentOutDisplay" style="font-size:16px;font-weight:600;color:#d9a565">$0.00</div>
       </div>
     </div>
     <div class="row" style="margin-top:14px;margin-bottom:0">
-      <button class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="openForm('income')">+ Add Income</button>
-      <button class="btn" style="flex:1;background:#dc2626;color:#fff" onclick="openForm('expense')">− Add Expense</button>
-      <button class="btn" style="background:#334155;color:#fff;padding:8px 12px" onclick="openSettings()">⚙</button>
+      <button class="btn" style="flex:1;background:#3f7d54;color:#fdf9ef" onclick="openForm('income')">+ Add Income</button>
+      <button class="btn" style="flex:1;background:#a8432f;color:#fdf9ef" onclick="openForm('expense')">− Add Expense</button>
+      <button class="btn" style="background:#2b3a2e;color:#fdf9ef;padding:8px 12px;border:1px solid rgba(161,114,31,0.4);display:flex;align-items:center" onclick="openSettings()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/></svg></button>
     </div>
   </div>
 
@@ -153,57 +176,65 @@
   <div id="ledgerView">
 
     <!-- Stats bar -->
-    <div style="display:flex;gap:16px;margin-bottom:12px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #f1f5f9">
-      <div><div style="font-size:10px;color:#94a3b8;font-weight:600">TOTAL IN</div><div id="totalIn" style="font-size:14px;color:#16a34a;font-weight:600">+$0.00</div></div>
-      <div><div style="font-size:10px;color:#94a3b8;font-weight:600">TOTAL OUT</div><div id="totalOut" style="font-size:14px;color:#dc2626;font-weight:600">-$0.00</div></div>
-      <div style="margin-left:auto"><div style="font-size:10px;color:#94a3b8;font-weight:600">TRANSACTIONS</div><div id="txCountStat" style="font-size:14px;color:#475569;font-weight:600">0</div></div>
+    <div style="display:flex;gap:16px;margin-bottom:12px;padding:10px 14px;background:#fdf9ef;border-radius:4px;border:1px solid #ece2c8">
+      <div><div style="font-size:10px;color:#8f8570;font-weight:600;letter-spacing:0.05em">TOTAL IN</div><div id="totalIn" style="font-size:14px;color:#3f7d54;font-weight:600">+$0.00</div></div>
+      <div><div style="font-size:10px;color:#8f8570;font-weight:600;letter-spacing:0.05em">TOTAL OUT</div><div id="totalOut" style="font-size:14px;color:#a8432f;font-weight:600">-$0.00</div></div>
+      <div style="margin-left:auto;text-align:right"><div style="font-size:10px;color:#8f8570;font-weight:600;letter-spacing:0.05em">TRANSACTIONS</div><div id="txCountStat" style="font-size:14px;color:#4a4335;font-weight:600">0</div></div>
     </div>
 
     <!-- Maaser Box -->
-    <div style="background:#fefce8;border:1px solid #fde047;border-radius:12px;padding:14px 16px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:4px">🕍 Maaser Owed (10%)</div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div id="maaserDisplay" style="font-size:26px;font-weight:700;color:#6b7280">$0.00</div>
-            <button onclick="openAddMaaserModal()" style="font-size:11px;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">+ Add</button>
+    <div style="position:relative;background:#f7efd6;border:1px solid #d4b06a;border-radius:4px;padding:14px 16px;margin-bottom:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0">
+          <div style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:2px solid #a1721f;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#7a5a1f;background:#fdf9ef;transform:rotate(-6deg);box-shadow:0 1px 3px rgba(122,90,31,0.25)">
+            <span style="font-size:13px;font-weight:700;line-height:1">10%</span>
+            <span style="font-size:7px;font-weight:700;letter-spacing:0.06em">MAASER</span>
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:11px;color:#7a5a1f;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em">Maaser Owed</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div id="maaserDisplay" style="font-size:25px;font-weight:700;color:#8f8570;font-family:var(--serif)">$0.00</div>
+              <button onclick="openAddMaaserModal()" style="font-size:11px;color:#a1721f;background:#fdf9ef;border:1px solid #d4b06a;border-radius:4px;padding:3px 8px;cursor:pointer;font-weight:600">+ Add</button>
+            </div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn" style="background:#334155;color:#fff;padding:8px 10px;font-size:11px" onclick="sheetSyncAll()">☁ Sync</button>
-          <button id="paidMaaserBtn" class="btn hidden" style="background:#b45309;color:#fff" onclick="openMaaserPayModal()">✓ Paid</button>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
+          <button class="btn" style="background:#2b3a2e;color:#fdf9ef;padding:7px 10px;font-size:11px;display:flex;align-items:center;gap:4px" onclick="sheetSyncAll()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.5-9 5.5 5.5 0 0 1 10.8-1.2A4 4 0 0 1 17 18H7z"/></svg> Sync</button>
+          <button id="paidMaaserBtn" class="btn hidden" style="background:#a1721f;color:#fdf9ef" onclick="openMaaserPayModal()">✓ Paid</button>
         </div>
-        <div id="maaserPaidBadge" class="hidden" style="display:flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px">
-          <span style="font-size:18px">✅</span>
-          <span style="font-size:12px;font-weight:600;color:#16a34a">All paid!</span>
-        </div>
+      </div>
+      <div id="maaserPaidBadge" class="hidden" style="align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border:2px solid #3f7d54;border-radius:3px;transform:rotate(-2deg);width:fit-content">
+        <span style="font-size:12px;font-weight:700;color:#3f7d54;letter-spacing:0.12em;text-transform:uppercase">✓ Paid in Full</span>
       </div>
     </div>
 
     <!-- Pending Queue -->
     <div id="pendingSection" class="hidden" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-weight:700;font-size:14px;color:#92400e">⏳ Pending Review <span id="pendingBadge" class="badge"></span></div>
-        <button onclick="dismissAllPending()" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
+        <div style="font-weight:700;font-size:14px;color:#7a5a1f;display:flex;align-items:center;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></svg> Pending Review <span id="pendingBadge" class="badge"></span></div>
+        <button onclick="dismissAllPending()" style="font-size:12px;color:#8f8570;background:none;border:none;cursor:pointer;text-decoration:underline">dismiss all</button>
       </div>
       <div id="pendingList"></div>
     </div>
 
     <!-- Subtle links -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;margin-top:-4px">
-      <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
-      <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#94a3b8;text-decoration:underline;padding:0;cursor:pointer">⬆ Bulk import</button>
+      <button onclick="show('addPendingModal')" style="background:none;border:none;font-size:12px;color:#8f8570;text-decoration:underline;padding:0;cursor:pointer">+ Add to pending queue</button>
+      <button onclick="show('importModal')" style="background:none;border:none;font-size:12px;color:#8f8570;text-decoration:underline;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:3px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><polyline points="8,9 12,13 16,9"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Bulk import</button>
     </div>
 
     <!-- Filter + Search -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <button id="filterAllBtn" class="filter-tab active" onclick="setTxFilter('all')">All</button>
-      <button id="filterStarBtn" class="filter-tab" onclick="setTxFilter('starred')">⭐ Starred</button>
+      <button id="filterStarBtn" class="filter-tab" onclick="setTxFilter('starred')" style="display:inline-flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 14.8,9 21,9.5 16.2,13.6 17.8,20 12,16.3 6.2,20 7.8,13.6 3,9.5 9.2,9"/></svg> Starred</button>
       <div style="flex:1"></div>
-      <div id="txCount" style="font-size:11px;color:#94a3b8"></div>
+      <div id="txCount" style="font-size:11px;color:#8f8570"></div>
     </div>
-    <input id="searchInput" class="input" placeholder="🔍 Search by name, date, or $amount…" style="margin-bottom:12px;display:none" oninput="debouncedSearch()" />
-    <div id="emptyState" style="text-align:center;color:#94a3b8;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
+    <div id="searchWrap" class="hidden" style="position:relative;margin-bottom:12px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8f8570" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="21" y2="21"/></svg>
+      <input id="searchInput" class="input" placeholder="Search by name, date, or $amount…" style="margin-bottom:0;padding-left:32px" oninput="debouncedSearch()" />
+    </div>
+    <div id="emptyState" style="text-align:center;color:#8f8570;padding:40px 0;font-size:14px">No transactions yet. Add your first one above!</div>
     <div id="txList"></div>
   </div>
 
@@ -211,20 +242,20 @@
   <div id="portfolioView" class="hidden">
 
     <!-- Portfolio overview -->
-    <div id="portfolioOverview" style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid #f1f5f9">
-      <div style="font-size:13px;font-weight:700;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;font-size:11px">Portfolio Overview</div>
+    <div id="portfolioOverview" style="background:#fdf9ef;border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid #ece2c8">
+      <div style="font-size:13px;font-weight:700;color:#4a4335;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;font-size:11px">Portfolio Overview</div>
       <div style="display:flex;gap:0">
-        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #f1f5f9">
-          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">COST BASIS</div>
-          <div id="ovCostBasis" style="font-size:15px;font-weight:700;color:#1e293b">$0.00</div>
+        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #ece2c8">
+          <div style="font-size:10px;color:#8f8570;font-weight:600;margin-bottom:3px">COST BASIS</div>
+          <div id="ovCostBasis" style="font-size:15px;font-weight:700;color:#1c2a20">$0.00</div>
         </div>
-        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #f1f5f9">
-          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">CURR VALUE</div>
-          <div id="ovCurrValue" style="font-size:15px;font-weight:700;color:#1e293b">$0.00</div>
+        <div style="flex:1;text-align:center;padding:8px;border-right:1px solid #ece2c8">
+          <div style="font-size:10px;color:#8f8570;font-weight:600;margin-bottom:3px">CURR VALUE</div>
+          <div id="ovCurrValue" style="font-size:15px;font-weight:700;color:#1c2a20">$0.00</div>
         </div>
         <div style="flex:1;text-align:center;padding:8px">
-          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:3px">TOTAL P&L</div>
-          <div id="ovPL" style="font-size:15px;font-weight:700;color:#94a3b8">—</div>
+          <div style="font-size:10px;color:#8f8570;font-weight:600;margin-bottom:3px">TOTAL P&L</div>
+          <div id="ovPL" style="font-size:15px;font-weight:700;color:#8f8570">—</div>
         </div>
       </div>
     </div>
@@ -233,10 +264,10 @@
     <div class="port-section">
       <div class="port-section-header">
         <div>
-          <div class="port-section-title">📈 Investments</div>
+          <div class="port-section-title" style="display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,11 13,15 21,7"/><polyline points="15,7 21,7 21,13"/></svg> Investments</div>
           <div class="port-section-sub" id="investSummary">Nothing tracked yet</div>
         </div>
-        <button onclick="openAddInvestment()" style="padding:7px 14px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
+        <button onclick="openAddInvestment()" style="padding:7px 14px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
       </div>
       <div id="investmentList"></div>
     </div>
@@ -245,10 +276,10 @@
     <div class="port-section">
       <div class="port-section-header">
         <div>
-          <div class="port-section-title">💸 Lent to Friends</div>
+          <div class="port-section-title" style="display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="7,17 17,7"/><polyline points="9,7 17,7 17,15"/></svg> Lent to Friends</div>
           <div class="port-section-sub" id="loanSummary">Nothing lent out</div>
         </div>
-        <button onclick="openAddLoan()" style="padding:7px 14px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
+        <button onclick="openAddLoan()" style="padding:7px 14px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">+ Add</button>
       </div>
       <div id="loanList"></div>
     </div>
@@ -259,15 +290,15 @@
 <!-- Tab Bar -->
 <div id="tabBar">
   <button class="tab-btn active" id="tabLedger" onclick="switchTab('ledger')">
-    <span class="tab-icon">💳</span>Ledger
+    <span class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>Ledger
   </button>
   <button class="tab-btn" id="tabPortfolio" onclick="switchTab('portfolio')">
-    <span class="tab-icon">📊</span>Portfolio
+    <span class="tab-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="19" y1="20" x2="19" y2="15"/></svg></span>Portfolio
   </button>
 </div>
 
 <!-- Floating Calculator Button -->
-<button id="calcFab" onclick="openCalculator()" title="Calculator">🧮</button>
+<button id="calcFab" onclick="openCalculator()" title="Calculator" style="display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2.5"/><line x1="7.5" y1="6.5" x2="16.5" y2="6.5"/><circle cx="8" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="16.5" r="1"/><circle cx="12" cy="16.5" r="1"/><circle cx="16" cy="16.5" r="1"/></svg></button>
 
 <!-- ══ MODALS ══ -->
 
@@ -290,7 +321,7 @@
     </div>
     <div id="maaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleFormMaaser()">
       <div id="formMaaserCheck" class="checkbox"></div>
-      <span id="maaserLabel" style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+      <span id="maaserLabel" style="font-size:13px;color:#7a5a1f">Count for Maaser (10%)</span>
     </div>
     <div class="row" style="margin-bottom:0">
       <button id="saveTxBtn" class="btn btn-dark" onclick="saveTx()">Save</button>
@@ -302,7 +333,7 @@
 <!-- Settings -->
 <div id="settingsModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:16px">⚙ Settings</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:7px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/></svg> Settings</div>
     <div class="setting-row">
       <div><div class="setting-label">App name</div></div>
       <input id="settingAppName" class="input" style="width:150px;font-size:13px" placeholder="Virtual Bank Account" maxlength="30" />
@@ -319,54 +350,55 @@
       <div><div class="setting-label">Fingerprint lock</div><div class="setting-sub">Privacy screen — not encryption</div></div>
       <label class="toggle-wrap"><input type="checkbox" id="settingLock"><span class="toggle-slider"></span></label>
     </div>
-    <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#92400e">
-      ⚠️ The lock screen is a <strong>privacy curtain</strong>, not encryption. It blocks casual viewing but not someone with browser console access.
+    <div style="background:#f7efd6;border:1px solid #d4b06a;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#7a5a1f;display:flex;gap:8px;align-items:flex-start">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 3l10 18H2z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>
+      <span>The lock screen is a <strong>privacy curtain</strong>, not encryption. It blocks casual viewing but not someone with browser console access.</span>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Biometric sign-in</div><div id="fpSetupSub" class="setting-sub">Register this device's fingerprint/Face ID with your cloud account</div></div>
-      <button id="fpSetupBtn" onclick="setupFingerprint()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">👆 Setup</button>
+      <button id="fpSetupBtn" onclick="setupFingerprint()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg> Setup</button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Cloud sign-in</div><div id="cloudAuthSub" class="setting-sub">Checking…</div></div>
-      <button id="cloudAuthBtn" onclick="toggleCloudSignInBox()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔑 Sign in</button>
+      <button id="cloudAuthBtn" onclick="toggleCloudSignInBox()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l3 3"/><path d="M14 9l2.5 2.5"/></svg> Sign in</button>
     </div>
     <div id="cloudSignInBox" class="hidden" style="display:flex;gap:8px;margin:-4px 0 10px">
       <input id="cloudPwInput" type="password" class="input" placeholder="Password" style="font-size:13px" onkeydown="if(event.key==='Enter')submitCloudPasswordLogin()" />
-      <button onclick="submitCloudPasswordLogin()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Go</button>
+      <button onclick="submitCloudPasswordLogin()" style="padding:7px 12px;background:#3f7d54;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Go</button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV</div></div>
-      <button onclick="exportCSV()" style="padding:7px 12px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">📤 CSV</button>
+      <button onclick="exportCSV()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14,3 14,8 19,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg> CSV</button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Restore from cloud</div><div class="setting-sub">Rebuild everything from your D1 cloud backup</div></div>
-      <button onclick="restoreFromCloud()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">☁️ Restore</button>
+      <button onclick="restoreFromCloud()" style="padding:7px 12px;background:#3f7d54;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.5-9 5.5 5.5 0 0 1 10.8-1.2A4 4 0 0 1 17 18H7z"/></svg> Restore</button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Lock now</div></div>
-      <button onclick="lockNow()" style="padding:7px 12px;background:#334155;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">🔒 Lock</button>
+      <button onclick="lockNow()" style="padding:7px 12px;background:#2b3a2e;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Lock</button>
     </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #fee2e2">
-      <div style="font-size:11px;color:#dc2626;font-weight:700;letter-spacing:0.05em;margin-bottom:8px">DANGER ZONE</div>
-      <button onclick="startClearAll()" style="width:100%;padding:10px;background:#fff;border:1.5px solid #fca5a5;border-radius:8px;color:#dc2626;font-weight:600;font-size:13px;cursor:pointer">🗑 Clear All Data</button>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f0ddd4">
+      <div style="font-size:11px;color:#a8432f;font-weight:700;letter-spacing:0.05em;margin-bottom:8px">DANGER ZONE</div>
+      <button onclick="startClearAll()" style="width:100%;padding:10px;background:#fdf9ef;border:1.5px solid #cf9a86;border-radius:8px;color:#a8432f;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg> Clear All Data</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-dark" onclick="applySettings()">Save Settings</button>
       <button class="btn btn-light" onclick="hide('settingsModal')">Cancel</button>
     </div>
-    <div style="text-align:center;font-size:10px;color:#cbd5e1;margin-top:10px" id="appVersionTag"></div>
+    <div style="text-align:center;font-size:10px;color:#c7bc9c;margin-top:10px" id="appVersionTag"></div>
   </div>
 </div>
 
 <!-- Clear All Step 1 -->
 <div id="clearStep1" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-size:40px;text-align:center;margin-bottom:12px">⚠️</div>
-    <div style="font-weight:700;font-size:17px;text-align:center;color:#dc2626;margin-bottom:8px">Are you certain?</div>
-    <div id="clearSummary" style="font-size:13px;color:#475569;background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:16px;line-height:1.8"></div>
-    <div style="font-size:12px;font-weight:700;color:#dc2626;text-align:center;margin-bottom:14px">THIS CANNOT BE UNDONE</div>
+    <div style="text-align:center;margin-bottom:12px;color:#a8432f"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg></div>
+    <div style="font-weight:700;font-size:17px;text-align:center;color:#a8432f;margin-bottom:8px">Are you certain?</div>
+    <div id="clearSummary" style="font-size:13px;color:#4a4335;background:#f6f0df;border-radius:8px;padding:12px;margin-bottom:16px;line-height:1.8"></div>
+    <div style="font-size:12px;font-weight:700;color:#a8432f;text-align:center;margin-bottom:14px">THIS CANNOT BE UNDONE</div>
     <div class="row" style="margin-bottom:0">
-      <button onclick="biometricClearAll()" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Yes, verify identity →</button>
+      <button onclick="biometricClearAll()" style="flex:1;padding:10px;background:#a8432f;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;cursor:pointer">Yes, verify identity →</button>
       <button class="btn btn-light" onclick="hide('clearStep1')">Cancel</button>
     </div>
   </div>
@@ -375,35 +407,35 @@
 <!-- Clear All Step 3 -->
 <div id="clearStep3" class="hidden">
   <div>
-    <button onclick="hide('clearStep3')" style="background:#f1f5f9;border:none;border-radius:8px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer">← Cancel, keep my data</button>
+    <button onclick="hide('clearStep3')" style="background:#ece2c8;border:none;border-radius:8px;padding:10px 16px;font-weight:600;font-size:14px;cursor:pointer">← Cancel, keep my data</button>
     <div style="margin-top:32px;text-align:center">
-      <div style="font-size:56px">🗑</div>
-      <div style="font-size:20px;font-weight:700;color:#dc2626;margin-top:12px">Final Warning</div>
-      <div style="font-size:14px;color:#64748b;margin-top:10px;line-height:1.6">Identity verified. You're one tap away from deleting everything. Tap Cancel above if you changed your mind.</div>
+      <div style="color:#a8432f"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+      <div style="font-size:20px;font-weight:700;color:#a8432f;margin-top:12px">Final Warning</div>
+      <div style="font-size:14px;color:#6e6553;margin-top:10px;line-height:1.6">Identity verified. You're one tap away from deleting everything. Tap Cancel above if you changed your mind.</div>
     </div>
   </div>
   <div style="flex:1"></div>
   <div>
-    <div style="text-align:center;font-size:11px;font-weight:700;color:#dc2626;letter-spacing:0.05em;margin-bottom:10px">THIS CANNOT BE UNDONE</div>
-    <button onclick="executeClearAll()" style="width:100%;padding:18px;background:#dc2626;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:18px;cursor:pointer">Delete Everything</button>
+    <div style="text-align:center;font-size:11px;font-weight:700;color:#a8432f;letter-spacing:0.05em;margin-bottom:10px">THIS CANNOT BE UNDONE</div>
+    <button onclick="executeClearAll()" style="width:100%;padding:18px;background:#a8432f;color:#fdf9ef;border:none;border-radius:12px;font-weight:700;font-size:18px;cursor:pointer">Delete Everything</button>
   </div>
 </div>
 
 <!-- Maaser Partial Payment -->
 <div id="maaserPayModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:4px">🕍 Pay Maaser</div>
-    <div style="font-size:13px;color:#64748b;margin-bottom:14px">Pay all, half, or a custom amount. The rest stays tracked.</div>
-    <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:8px">Total owed: <span id="maaserTotalOwed"></span></div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V11a7 7 0 0 1 14 0v10"/><line x1="3" y1="21" x2="21" y2="21"/></svg> Pay Maaser</div>
+    <div style="font-size:13px;color:#6e6553;margin-bottom:14px">Pay all, half, or a custom amount. The rest stays tracked.</div>
+    <div style="font-size:12px;color:#7a5a1f;font-weight:600;margin-bottom:8px">Total owed: <span id="maaserTotalOwed"></span></div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button onclick="setMaaserPayAmt('full')" style="flex:1;padding:7px;border:2px solid #b45309;border-radius:8px;background:#fff7ed;color:#b45309;font-weight:600;font-size:12px;cursor:pointer">Full</button>
-      <button onclick="setMaaserPayAmt('half')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Half</button>
-      <button onclick="setMaaserPayAmt('custom')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Custom</button>
+      <button onclick="setMaaserPayAmt('full')" style="flex:1;padding:7px;border:2px solid #a1721f;border-radius:8px;background:#f7efd6;color:#a1721f;font-weight:600;font-size:12px;cursor:pointer">Full</button>
+      <button onclick="setMaaserPayAmt('half')" style="flex:1;padding:7px;border:2px solid #ddd3ba;border-radius:8px;background:#fdf9ef;color:#6e6553;font-weight:600;font-size:12px;cursor:pointer">Half</button>
+      <button onclick="setMaaserPayAmt('custom')" style="flex:1;padding:7px;border:2px solid #ddd3ba;border-radius:8px;background:#fdf9ef;color:#6e6553;font-weight:600;font-size:12px;cursor:pointer">Custom</button>
     </div>
     <input id="maaserPayInput" class="input" type="number" placeholder="Amount to pay" style="margin-bottom:10px" oninput="onMaaserPayInput()" />
-    <div id="maaserPayPreview" style="font-size:13px;color:#64748b;margin-bottom:14px;padding:10px;background:#f8fafc;border-radius:8px;display:none"></div>
+    <div id="maaserPayPreview" style="font-size:13px;color:#6e6553;margin-bottom:14px;padding:10px;background:#f6f0df;border-radius:8px;display:none"></div>
     <div class="row" style="margin-bottom:0">
-      <button class="btn" style="flex:1;background:#b45309;color:#fff" onclick="confirmPartialMaaser()">Log Payment</button>
+      <button class="btn" style="flex:1;background:#a1721f;color:#fdf9ef" onclick="confirmPartialMaaser()">Log Payment</button>
       <button class="btn btn-light" onclick="hide('maaserPayModal')">Cancel</button>
     </div>
   </div>
@@ -412,12 +444,12 @@
 <!-- Add Owed Maaser -->
 <div id="addMaaserModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:6px">🕍 Add to Maaser Owed</div>
-    <div style="font-size:13px;color:#64748b;margin-bottom:14px">Manually add to your Maaser total — e.g. for cash income you received but didn't log.</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V11a7 7 0 0 1 14 0v10"/><line x1="3" y1="21" x2="21" y2="21"/></svg> Add to Maaser Owed</div>
+    <div style="font-size:13px;color:#6e6553;margin-bottom:14px">Manually add to your Maaser total — e.g. for cash income you received but didn't log.</div>
     <input id="addMaaserAmt" class="input" type="number" placeholder="Amount to add" style="margin-bottom:8px" />
     <input id="addMaaserNote" class="input" placeholder="Note (optional)" maxlength="100" style="margin-bottom:14px" />
     <div class="row" style="margin-bottom:0">
-      <button class="btn btn-dark" style="background:#b45309" onclick="confirmAddMaaser()">Add to Owed</button>
+      <button class="btn btn-dark" style="background:#a1721f" onclick="confirmAddMaaser()">Add to Owed</button>
       <button class="btn btn-light" onclick="hide('addMaaserModal')">Cancel</button>
     </div>
   </div>
@@ -426,7 +458,7 @@
 <!-- Add Pending -->
 <div id="addPendingModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:14px">⏳ Add to Pending Queue</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></svg> Add to Pending Queue</div>
     <div class="row">
       <button id="pendingTypeExpense" class="type-btn expense active" onclick="setPendingType('expense')">Expense</button>
       <button id="pendingTypeIncome" class="type-btn income" onclick="setPendingType('income')">Income</button>
@@ -449,7 +481,7 @@
     </div>
     <div id="pendingMaaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="togglePendingMaaser()">
       <div id="pendingMaaserCheck" class="checkbox"></div>
-      <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+      <span style="font-size:13px;color:#7a5a1f">Count for Maaser (10%)</span>
     </div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="addToPending()">Add to Queue</button>
@@ -461,32 +493,32 @@
 <!-- Confirm Pending -->
 <div id="confirmPendingModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:4px">⏳ Confirm Transaction</div>
-    <div id="cpSource" style="font-size:12px;color:#94a3b8;margin-bottom:12px"></div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></svg> Confirm Transaction</div>
+    <div id="cpSource" style="font-size:12px;color:#8f8570;margin-bottom:12px"></div>
     <div id="cpDesc" style="font-size:15px;font-weight:600;margin-bottom:4px"></div>
     <div id="cpAmt" style="font-size:28px;font-weight:700;margin-bottom:16px"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer" id="cpMaaserRow" onclick="toggleCpMaaser()">
       <div id="cpMaaserCheck" class="checkbox checked"></div>
-      <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+      <span style="font-size:13px;color:#7a5a1f">Count for Maaser (10%)</span>
     </div>
     <div class="row" style="margin-bottom:8px">
-      <button id="cpConfirmBtn" class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="approvePending()">✓ Add to VBA</button>
+      <button id="cpConfirmBtn" class="btn" style="flex:1;background:#3f7d54;color:#fdf9ef" onclick="approvePending()">✓ Add to VBA</button>
       <button class="btn btn-light" onclick="hide('confirmPendingModal')">Cancel</button>
     </div>
-    <button onclick="dismissPending()" style="width:100%;padding:8px;background:none;border:1px solid #e2e8f0;border-radius:8px;color:#94a3b8;font-size:13px;cursor:pointer">✕ Dismiss</button>
+    <button onclick="dismissPending()" style="width:100%;padding:8px;background:none;border:1px solid #ddd3ba;border-radius:8px;color:#8f8570;font-size:13px;cursor:pointer">✕ Dismiss</button>
   </div>
 </div>
 
 <!-- Import -->
 <div id="importModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:6px">⬆ Bulk Import</div>
-    <div style="font-size:12px;color:#64748b;margin-bottom:10px">One per line. &nbsp;<code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">+50</code>&nbsp;<code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">-$12.50 Groceries</code></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px">
-      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1e293b">List order</div><div style="font-size:11px;color:#94a3b8" id="importOrderDesc">First line ends up on top</div></div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><polyline points="8,9 12,13 16,9"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Bulk Import</div>
+    <div style="font-size:12px;color:#6e6553;margin-bottom:10px">One per line. &nbsp;<code style="background:#ece2c8;padding:2px 5px;border-radius:4px">+50</code>&nbsp;<code style="background:#ece2c8;padding:2px 5px;border-radius:4px">-$12.50 Groceries</code></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#f6f0df;border-radius:8px">
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1c2a20">List order</div><div style="font-size:11px;color:#8f8570" id="importOrderDesc">First line ends up on top</div></div>
       <div style="display:flex;gap:6px">
-        <button id="importOrderTopBtn" onclick="setImportOrder('topdown')" style="padding:5px 10px;border-radius:6px;border:1.5px solid #1e293b;background:#1e293b;color:#fff;font-size:11px;font-weight:600;cursor:pointer">Top→down</button>
-        <button id="importOrderBottomBtn" onclick="setImportOrder('bottomup')" style="padding:5px 10px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:11px;font-weight:600;cursor:pointer">Bottom→up</button>
+        <button id="importOrderTopBtn" onclick="setImportOrder('topdown')" style="padding:5px 10px;border-radius:6px;border:1.5px solid #1c2a20;background:#1c2a20;color:#fdf9ef;font-size:11px;font-weight:600;cursor:pointer">Top→down</button>
+        <button id="importOrderBottomBtn" onclick="setImportOrder('bottomup')" style="padding:5px 10px;border-radius:6px;border:1.5px solid #ddd3ba;background:#fdf9ef;color:#6e6553;font-size:11px;font-weight:600;cursor:pointer">Bottom→up</button>
       </div>
     </div>
     <textarea id="importBox" class="input" style="height:140px;font-family:monospace;font-size:13px;margin-bottom:12px" placeholder="+200&#10;-$12.50 Groceries&#10;-5"></textarea>
@@ -500,12 +532,12 @@
 <!-- Delete Confirm -->
 <div id="deleteModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:8px">🗑 Delete Transaction?</div>
-    <div id="deleteModalDesc" style="font-size:14px;color:#475569;margin-bottom:4px"></div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg> Delete Transaction?</div>
+    <div id="deleteModalDesc" style="font-size:14px;color:#4a4335;margin-bottom:4px"></div>
     <div id="deleteModalAmt" style="font-size:20px;font-weight:700;margin-bottom:16px"></div>
-    <div style="font-size:13px;color:#94a3b8;margin-bottom:16px">This cannot be undone.</div>
+    <div style="font-size:13px;color:#8f8570;margin-bottom:16px">This cannot be undone.</div>
     <div class="row" style="margin-bottom:0">
-      <button class="btn" style="flex:1;background:#dc2626;color:#fff" onclick="confirmDelete()">Yes, delete</button>
+      <button class="btn" style="flex:1;background:#a8432f;color:#fdf9ef" onclick="confirmDelete()">Yes, delete</button>
       <button class="btn btn-light" onclick="hide('deleteModal')">Cancel</button>
     </div>
   </div>
@@ -514,7 +546,7 @@
 <!-- Edit Transaction -->
 <div id="editModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:14px">✏️ Edit Transaction</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 7.5l3 3"/></svg> Edit Transaction</div>
     <div class="row">
       <button id="editTypeIncome" class="type-btn income" onclick="setEditType('income')">Income</button>
       <button id="editTypeExpense" class="type-btn expense active" onclick="setEditType('expense')">Expense</button>
@@ -530,7 +562,7 @@
     </div>
     <div id="editMaaserRow" class="hidden" style="align-items:center;gap:8px;margin-bottom:12px;cursor:pointer" onclick="toggleEditMaaser()">
       <div id="editMaaserCheck" class="checkbox"></div>
-      <span style="font-size:13px;color:#92400e">Count for Maaser (10%)</span>
+      <span style="font-size:13px;color:#7a5a1f">Count for Maaser (10%)</span>
     </div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveEdit()">Save</button>
@@ -542,11 +574,11 @@
 <!-- Context Menu Sheet -->
 <div id="ctxSheet" class="hidden" onclick="hide('ctxSheet')">
   <div class="sheet" onclick="event.stopPropagation()">
-    <div id="ctxTitle" style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-    <button class="ctx-btn" onclick="ctxStar()"><span style="font-size:20px">⭐</span><span id="ctxStarLabel">Star transaction</span></button>
-    <button class="ctx-btn" onclick="ctxEdit()"><span style="font-size:20px">✏️</span>Edit</button>
-    <button class="ctx-btn" style="color:#dc2626" onclick="ctxDelete()"><span style="font-size:20px">🗑</span>Delete</button>
-    <button onclick="hide('ctxSheet')" style="width:100%;padding:12px;background:#f1f5f9;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px">Cancel</button>
+    <div id="ctxTitle" style="font-weight:700;font-size:15px;color:#1c2a20;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+    <button class="ctx-btn" onclick="ctxStar()"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3 14.8,9 21,9.5 16.2,13.6 17.8,20 12,16.3 6.2,20 7.8,13.6 3,9.5 9.2,9"/></svg><span id="ctxStarLabel">Star transaction</span></button>
+    <button class="ctx-btn" onclick="ctxEdit()"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 7.5l3 3"/></svg>Edit</button>
+    <button class="ctx-btn" style="color:#a8432f" onclick="ctxDelete()"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>Delete</button>
+    <button onclick="hide('ctxSheet')" style="width:100%;padding:12px;background:#ece2c8;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px">Cancel</button>
   </div>
 </div>
 
@@ -555,7 +587,7 @@
 <!-- Add/Edit Investment -->
 <div id="addInvestmentModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:14px" id="investModalTitle">📈 Add Investment</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:7px" id="investModalTitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,11 13,15 21,7"/><polyline points="15,7 21,7 21,13"/></svg> Add Investment</div>
     <input id="invName" class="input" placeholder="Name (e.g. VOO, BTC, AAPL)" maxlength="60" style="margin-bottom:8px" />
     <select id="invBrokerage" class="input" style="margin-bottom:8px">
       <option value="Robinhood">Robinhood</option>
@@ -572,7 +604,7 @@
     </div>
     <input id="invCurrentValue" class="input" type="number" placeholder="Current value (optional — shows P&L)" min="0" style="margin-bottom:8px" />
     <input id="invNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:10px" />
-    <div style="font-size:11px;color:#94a3b8;margin-bottom:14px">Amount invested moves out of your spendable balance.</div>
+    <div style="font-size:11px;color:#8f8570;margin-bottom:14px">Amount invested moves out of your spendable balance.</div>
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveInvestment()">Save</button>
       <button class="btn btn-light" onclick="hide('addInvestmentModal')">Cancel</button>
@@ -583,14 +615,14 @@
 <!-- Add/Edit Loan -->
 <div id="addLoanModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:14px" id="loanModalTitle">💸 Lend Money</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:7px" id="loanModalTitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="7,17 17,7"/><polyline points="9,7 17,7 17,15"/></svg> Lend Money</div>
     <input id="loanPerson" class="input" placeholder="Person's name" maxlength="60" style="margin-bottom:8px" />
     <div class="row">
       <input id="loanAmount" class="input" type="number" placeholder="Amount lent ($)" min="0" style="flex:1" />
       <input id="loanDate" class="input" type="date" style="flex:1" />
     </div>
     <input id="loanDueDate" class="input" type="date" style="margin-bottom:8px" />
-    <div style="font-size:11px;color:#94a3b8;margin:-4px 0 8px 2px">Due date (optional)</div>
+    <div style="font-size:11px;color:#8f8570;margin:-4px 0 8px 2px">Due date (optional)</div>
     <input id="loanNotes" class="input" placeholder="Notes (optional)" maxlength="100" style="margin-bottom:14px" />
     <div class="row" style="margin-bottom:0">
       <button class="btn btn-dark" onclick="saveLoan()">Save</button>
@@ -602,18 +634,18 @@
 <!-- Record Loan Payment -->
 <div id="loanPaymentModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:4px">💰 Record Payment</div>
-    <div id="loanPayPerson" style="font-size:13px;color:#64748b;margin-bottom:12px"></div>
-    <div style="font-size:12px;color:#f97316;font-weight:600;margin-bottom:8px">Outstanding: <span id="loanPayOutstanding"></span></div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9.5c0-1 1.2-1.7 3-1.7s3 .8 3 1.8-1 1.2-3 1.6-3 .9-3 1.9 1.3 1.8 3 1.8 3-.6 3-1.7"/><line x1="12" y1="5.8" x2="12" y2="7.3"/><line x1="12" y1="16.7" x2="12" y2="18.2"/></svg> Record Payment</div>
+    <div id="loanPayPerson" style="font-size:13px;color:#6e6553;margin-bottom:12px"></div>
+    <div style="font-size:12px;color:#c17a35;font-weight:600;margin-bottom:8px">Outstanding: <span id="loanPayOutstanding"></span></div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button onclick="setLoanPayAmt('full')" style="flex:1;padding:7px;border:2px solid #16a34a;border-radius:8px;background:#dcfce7;color:#16a34a;font-weight:600;font-size:12px;cursor:pointer">Full</button>
-      <button onclick="setLoanPayAmt('half')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Half</button>
-      <button onclick="setLoanPayAmt('custom')" style="flex:1;padding:7px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer">Custom</button>
+      <button onclick="setLoanPayAmt('full')" style="flex:1;padding:7px;border:2px solid #3f7d54;border-radius:8px;background:#dfe9dc;color:#3f7d54;font-weight:600;font-size:12px;cursor:pointer">Full</button>
+      <button onclick="setLoanPayAmt('half')" style="flex:1;padding:7px;border:2px solid #ddd3ba;border-radius:8px;background:#fdf9ef;color:#6e6553;font-weight:600;font-size:12px;cursor:pointer">Half</button>
+      <button onclick="setLoanPayAmt('custom')" style="flex:1;padding:7px;border:2px solid #ddd3ba;border-radius:8px;background:#fdf9ef;color:#6e6553;font-weight:600;font-size:12px;cursor:pointer">Custom</button>
     </div>
     <input id="loanPayAmt" class="input" type="number" placeholder="Amount received" style="margin-bottom:10px" oninput="updateLoanPayPreview()" />
-    <div id="loanPayPreview" style="font-size:13px;color:#64748b;margin-bottom:14px;padding:10px;background:#f8fafc;border-radius:8px;display:none"></div>
+    <div id="loanPayPreview" style="font-size:13px;color:#6e6553;margin-bottom:14px;padding:10px;background:#f6f0df;border-radius:8px;display:none"></div>
     <div class="row" style="margin-bottom:0">
-      <button class="btn" style="flex:1;background:#16a34a;color:#fff" onclick="confirmLoanPayment()">Record Payment</button>
+      <button class="btn" style="flex:1;background:#3f7d54;color:#fdf9ef" onclick="confirmLoanPayment()">Record Payment</button>
       <button class="btn btn-light" onclick="hide('loanPaymentModal')">Cancel</button>
     </div>
   </div>
@@ -622,8 +654,8 @@
 <!-- Calculator -->
 <div id="calcScreen" class="hidden">
   <div class="calc-top">
-    <button onclick="hide('calcScreen')" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
-    <div style="color:#666;font-size:13px">Calculator</div>
+    <button onclick="hide('calcScreen')" style="background:none;border:none;color:#fdf9ef;font-size:22px;cursor:pointer">✕</button>
+    <div style="color:#a89c86;font-size:13px">Calculator</div>
     <div style="width:36px"></div>
   </div>
   <div class="calc-display-wrap">
@@ -657,6 +689,38 @@
 <div id="toast" class="hidden"></div>
 
 <script>
+// ── Icons (inline SVG, replaces emoji) ───────────────────────────────
+const ICON_PATHS={
+  card:'<rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  trendingUp:'<polyline points="3,17 9,11 13,15 21,7"/><polyline points="15,7 21,7 21,13"/>',
+  lend:'<polyline points="7,17 17,7"/><polyline points="9,7 17,7 17,15"/>',
+  tithe:'<path d="M5 21V11a7 7 0 0 1 14 0v10"/><line x1="3" y1="21" x2="21" y2="21"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/>',
+  importIn:'<path d="M12 3v10"/><polyline points="8,9 12,13 16,9"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  sliders:'<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/>',
+  fingerprint:'<path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+  edit:'<path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 7.5l3 3"/>',
+  starOutline:'<polygon points="12,3 14.8,9 21,9.5 16.2,13.6 17.8,20 12,16.3 6.2,20 7.8,13.6 3,9.5 9.2,9"/>',
+  starFilled:'<polygon points="12,3 14.8,9 21,9.5 16.2,13.6 17.8,20 12,16.3 6.2,20 7.8,13.6 3,9.5 9.2,9" fill="currentColor"/>',
+  checkCircle:'<circle cx="12" cy="12" r="9"/><polyline points="8,12 11,15 16,9"/>',
+  person:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M9 9.5c0-1 1.2-1.7 3-1.7s3 .8 3 1.8-1 1.2-3 1.6-3 .9-3 1.9 1.3 1.8 3 1.8 3-.6 3-1.7"/><line x1="12" y1="5.8" x2="12" y2="7.3"/><line x1="12" y1="16.7" x2="12" y2="18.2"/>',
+  calculator:'<rect x="4" y="2" width="16" height="20" rx="2.5"/><line x1="7.5" y1="6.5" x2="16.5" y2="6.5"/><circle cx="8" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="16.5" r="1"/><circle cx="12" cy="16.5" r="1"/><circle cx="16" cy="16.5" r="1"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="21" y2="21"/>',
+  cloud:'<path d="M7 18a4.5 4.5 0 0 1-.5-9 5.5 5.5 0 0 1 10.8-1.2A4 4 0 0 1 17 18H7z"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l3 3"/><path d="M14 9l2.5 2.5"/>',
+  exportFile:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14,3 14,8 19,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>',
+  warning:'<path d="M12 3l10 18H2z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/>',
+  barChart:'<line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="19" y1="20" x2="19" y2="15"/>',
+  arrowUp:'<line x1="12" y1="19" x2="12" y2="5"/><polyline points="6,11 12,5 18,11"/>',
+  arrowDown:'<line x1="12" y1="5" x2="12" y2="19"/><polyline points="6,13 12,19 18,13"/>',
+};
+function ic(name,size,color){
+  size=size||16;color=color||'currentColor';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-${Math.round(size*0.16)}px;flex-shrink:0">${ICON_PATHS[name]||''}</svg>`;
+}
 // ── Utilities ──────────────────────────────────────────────────────
 function esc(s){const d=document.createElement('div');d.textContent=String(s==null?'':s);return d.innerHTML;}
 function roundMoney(n){return Math.round(n*100)/100;}
@@ -699,7 +763,7 @@ function applySettings(){
     state.balance=state.transactions.length>0?state.transactions[0].balance:val;
     document.getElementById("newBalanceInput").value="";
   }
-  document.getElementById("appTitle").textContent="💳 "+settings.appName;
+  document.getElementById("appTitle").innerHTML=ic('card',14)+' '+esc(settings.appName);
   document.getElementById("lockTitle").textContent=settings.appName;
   hide("settingsModal");render();showToast("Settings saved ✓");
 }
@@ -800,7 +864,7 @@ async function refreshFingerprintSetting(){
   const btn=document.getElementById("fpSetupBtn"),sub=document.getElementById("fpSetupSub");
   if(!btn)return;
   if(status.hasCredential){btn.textContent="✓ Registered";sub.textContent="This account already has a fingerprint credential registered";}
-  else{btn.textContent="👆 Setup";sub.textContent="Register this device's fingerprint/Face ID with your cloud account";}
+  else{btn.innerHTML=ic('fingerprint',13)+' Setup';sub.textContent="Register this device's fingerprint/Face ID with your cloud account";}
 }
 
 // ── Password sign-in (fallback for devices without a fingerprint sensor) ──
@@ -863,7 +927,7 @@ async function refreshCloudAuthSetting(){
   const sub=document.getElementById("cloudAuthSub"),btn=document.getElementById("cloudAuthBtn");
   if(!sub)return;
   if(status.authenticated){sub.textContent="Signed in on this device";btn.textContent="✓ Signed in";}
-  else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.textContent="🔑 Sign in";}
+  else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.innerHTML=ic('key',13)+' Sign in';}
 }
 
 // ── Cloud sync (D1) ───────────────────────────────────────────────────
@@ -911,7 +975,7 @@ function sheetSyncAll(){
   if(!hasAnyData()){
     if(!confirm("Your local data is empty. Syncing now will ERASE the cloud backup. Continue?"))return;
   }
-  showToast("Backing up ☁️");
+  showToast("Backing up…");
   pushToCloud();
 }
 
@@ -985,7 +1049,7 @@ function markConfirmed(){localStorage.setItem(CONFIRMED_KEY,String(Date.now()));
 function hasUnsyncedChanges(){return parseInt(localStorage.getItem(DIRTY_KEY)||"0")>parseInt(localStorage.getItem(CONFIRMED_KEY)||"0");}
 function saveLocalOnly(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
-  catch(e){if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')showToast("⚠️ Storage almost full! Export your data.");}
+  catch(e){if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED')showToast("Storage almost full — export your data.");}
 }
 function save(){
   saveLocalOnly();
@@ -1025,10 +1089,10 @@ function updateHeader(){
   const netWorth=roundMoney(spendable+investedNW+lentOut);
 
   const nwEl=document.getElementById("netWorthDisplay");
-  nwEl.textContent=fmt(netWorth);nwEl.style.color=netWorth>=0?"#4ade80":"#f87171";
+  nwEl.textContent=fmt(netWorth);nwEl.style.color=netWorth>=0?"#7fc99a":"#e08a76";
 
   const bEl=document.getElementById("balanceDisplay");
-  bEl.textContent=fmt(spendable);bEl.style.color=spendable>=0?"#4ade80":"#f87171";
+  bEl.textContent=fmt(spendable);bEl.style.color=spendable>=0?"#7fc99a":"#e08a76";
 
   document.getElementById("investedDisplay").textContent=fmt(investedIn);
   document.getElementById("lentOutDisplay").textContent=fmt(lentOut);
@@ -1088,7 +1152,7 @@ function openCtxMenu(id){
   document.getElementById("ctxStarLabel").textContent=tx.starred?"Unstar":"Star transaction";
   show("ctxSheet");
 }
-function ctxStar(){const tx=state.transactions.find(t=>t.id===ctxId);if(!tx)return;tx.starred=!tx.starred;save();hide("ctxSheet");render();showToast(tx.starred?"⭐ Starred":"Star removed");}
+function ctxStar(){const tx=state.transactions.find(t=>t.id===ctxId);if(!tx)return;tx.starred=!tx.starred;save();hide("ctxSheet");render();showToast(tx.starred?"Starred":"Star removed");}
 function ctxEdit(){hide("ctxSheet");openEdit(ctxId);}
 function ctxDelete(){hide("ctxSheet");openDeleteModal(ctxId);}
 
@@ -1137,8 +1201,8 @@ document.addEventListener("pointerdown",e=>{if(!e.target.closest(".ac-wrap")&&!e
 // ── Import Order ───────────────────────────────────────────────────
 function setImportOrder(o){
   importOrder=o;
-  const on="padding:5px 10px;border-radius:6px;border:1.5px solid #1e293b;background:#1e293b;color:#fff;font-size:11px;font-weight:600;cursor:pointer";
-  const off="padding:5px 10px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:11px;font-weight:600;cursor:pointer";
+  const on="padding:5px 10px;border-radius:6px;border:1.5px solid #1c2a20;background:#1c2a20;color:#fdf9ef;font-size:11px;font-weight:600;cursor:pointer";
+  const off="padding:5px 10px;border-radius:6px;border:1.5px solid #ddd3ba;background:#fdf9ef;color:#6e6553;font-size:11px;font-weight:600;cursor:pointer";
   document.getElementById("importOrderTopBtn").style.cssText=o==="topdown"?on:off;
   document.getElementById("importOrderBottomBtn").style.cssText=o==="bottomup"?on:off;
   document.getElementById("importOrderDesc").textContent=o==="topdown"?"First line ends up on top":"Last line ends up on top";
@@ -1152,7 +1216,7 @@ function confirmPartialMaaser(){
   const amt=roundMoney(parseFloat(document.getElementById("maaserPayInput").value));
   if(isNaN(amt)||amt<=0){showToast("Please enter a valid amount");return;}
   if(amt>state.maaserOwed+0.001){showToast("Amount exceeds what's owed");return;}
-  const tx={id:Date.now(),type:"expense",desc:"🕍 Maaser Payment",amount:amt,delta:-amt,date:today(),balance:roundMoney(state.balance-amt),maaser:false,maaserAmt:0};
+  const tx={id:Date.now(),type:"expense",desc:"Maaser Payment",amount:amt,delta:-amt,date:today(),balance:roundMoney(state.balance-amt),maaser:false,maaserAmt:0};
   state.transactions.unshift(tx);state.balance=roundMoney(state.balance-amt);state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-amt));
   if(state.maaserOwed<0.01){state.transactions=state.transactions.map(t=>({...t,maaser:false,maaserAmt:0}));state.maaserOwed=0;state.maaserEverPaid=true;}
   invalidateAcCache();sheetAdd(tx);hide("maaserPayModal");render();
@@ -1174,10 +1238,10 @@ function openConfirmPending(id){
   cpId=id;cpMaaser=item.maaser!=null?item.maaser:item.type==="income";
   document.getElementById("cpSource").textContent=item.source?`From: ${item.source}`:"";
   document.getElementById("cpDesc").textContent=item.desc;
-  const ae=document.getElementById("cpAmt");ae.textContent=(item.type==="income"?"+":"−")+fmt(item.amount);ae.style.color=item.type==="income"?"#16a34a":"#dc2626";
+  const ae=document.getElementById("cpAmt");ae.textContent=(item.type==="income"?"+":"−")+fmt(item.amount);ae.style.color=item.type==="income"?"#3f7d54":"#a8432f";
   document.getElementById("cpMaaserRow").style.display=item.type==="income"?"flex":"none";
   document.getElementById("cpMaaserCheck").className="checkbox"+(cpMaaser?" checked":"");
-  document.getElementById("cpConfirmBtn").style.background=item.type==="income"?"#16a34a":"#dc2626";
+  document.getElementById("cpConfirmBtn").style.background=item.type==="income"?"#3f7d54":"#a8432f";
   show("confirmPendingModal");
 }
 function toggleCpMaaser(){cpMaaser=!cpMaaser;document.getElementById("cpMaaserCheck").className="checkbox"+(cpMaaser?" checked":"");}
@@ -1211,14 +1275,14 @@ function renderPending(){
   list.innerHTML=state.pending.map(item=>`
     <div class="pending-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div><div style="font-weight:600;font-size:14px">${esc(item.desc)}</div><div style="font-size:11px;color:#94a3b8">${esc(item.date)}${item.source?" · "+esc(item.source):""}</div></div>
-        <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#16a34a":"#dc2626"}">${item.type==="income"?"+":"−"}${esc(fmt(item.amount))}</div>
+        <div><div style="font-weight:600;font-size:14px">${esc(item.desc)}</div><div style="font-size:11px;color:#8f8570">${esc(item.date)}${item.source?" · "+esc(item.source):""}</div></div>
+        <div style="font-weight:700;font-size:16px;color:${item.type==="income"?"#3f7d54":"#a8432f"}">${item.type==="income"?"+":"−"}${esc(fmt(item.amount))}</div>
       </div>
-      ${item.type==="income"?`<div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;cursor:pointer" onclick="togglePendingItemMaaser(${item.id})"><div class="small-check ${item.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${item.maaser?"✓":""}</span></div><span style="font-size:11px;color:${item.maaser?"#b45309":"#94a3b8"}">${item.maaser?"Count for Maaser ✓":"Count for Maaser"}</span></div>`:""}
+      ${item.type==="income"?`<div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;cursor:pointer" onclick="togglePendingItemMaaser(${item.id})"><div class="small-check ${item.maaser?"checked":""}"><span style="color:#fdf9ef;font-size:9px">${item.maaser?"✓":""}</span></div><span style="font-size:11px;color:${item.maaser?"#a1721f":"#8f8570"}">${item.maaser?"Count for Maaser ✓":"Count for Maaser"}</span></div>`:""}
       <div style="display:flex;gap:8px">
-        <button onclick="openConfirmPending(${item.id})" style="flex:1;padding:7px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">Review & Add</button>
-        <button onclick="quickApprovePending(${item.id},${item.maaser===true})" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ Add</button>
-        <button onclick="quickDismissPending(${item.id})" style="padding:7px 10px;background:#f1f5f9;color:#64748b;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕</button>
+        <button onclick="openConfirmPending(${item.id})" style="flex:1;padding:7px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">Review & Add</button>
+        <button onclick="quickApprovePending(${item.id},${item.maaser===true})" style="flex:1;padding:7px;background:#3f7d54;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✓ Add</button>
+        <button onclick="quickDismissPending(${item.id})" style="padding:7px 10px;background:#ece2c8;color:#6e6553;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕</button>
       </div>
     </div>`).join("");
 }
@@ -1248,7 +1312,7 @@ function runBulkImport(){
 // ── Portfolio: Investments ─────────────────────────────────────────
 function openAddInvestment(){
   editingInvestmentId=null;
-  document.getElementById("investModalTitle").textContent="📈 Add Investment";
+  document.getElementById("investModalTitle").innerHTML=ic('trendingUp',16)+' Add Investment';
   document.getElementById("invName").value="";document.getElementById("invBrokerage").value="Robinhood";
   document.getElementById("invAmountIn").value="";document.getElementById("invCurrentValue").value="";
   document.getElementById("invDate").value=today();document.getElementById("invNotes").value="";
@@ -1257,7 +1321,7 @@ function openAddInvestment(){
 function openEditInvestment(id){
   const inv=state.investments.find(i=>i.id===id);if(!inv)return;
   editingInvestmentId=id;
-  document.getElementById("investModalTitle").textContent="✏️ Edit Investment";
+  document.getElementById("investModalTitle").innerHTML=ic('edit',16)+' Edit Investment';
   document.getElementById("invName").value=inv.name;document.getElementById("invBrokerage").value=inv.brokerage;
   document.getElementById("invAmountIn").value=inv.amountIn;document.getElementById("invCurrentValue").value=inv.currentValue??'';
   document.getElementById("invDate").value=inv.date;document.getElementById("invNotes").value=inv.notes||"";
@@ -1281,7 +1345,7 @@ function saveInvestment(){
         const tx=state.transactions.find(t=>t.id===inv.txId);
         if(tx){
           const oldDelta=tx.delta,newDelta=-amountIn;
-          tx.desc=`📈 Invested in ${name}`;tx.amount=amountIn;tx.delta=newDelta;tx.date=date;
+          tx.desc=`Invested in ${name}`;tx.amount=amountIn;tx.delta=newDelta;tx.date=date;
           state.balance=roundMoney(state.balance+(newDelta-oldDelta));
           recalcBalances();
         }
@@ -1291,7 +1355,7 @@ function saveInvestment(){
   }else{
     const invId=Date.now();
     const delta=-amountIn;
-    const tx={id:invId+1,type:"expense",desc:`📈 Invested in ${name}`,amount:amountIn,delta,date,balance:roundMoney(state.balance+delta),maaser:false,maaserAmt:0};
+    const tx={id:invId+1,type:"expense",desc:`Invested in ${name}`,amount:amountIn,delta,date,balance:roundMoney(state.balance+delta),maaser:false,maaserAmt:0};
     state.transactions.unshift(tx);state.balance=roundMoney(state.balance+delta);
     invalidateAcCache();
     state.investments.push({id:invId,name,brokerage,amountIn,currentValue,date,notes,txId:tx.id});
@@ -1324,37 +1388,37 @@ function renderInvestments(){
   const plEl=document.getElementById("ovPL");
   if(state.investments.some(i=>i.currentValue!=null)){
     plEl.textContent=(totalPL>=0?"+":"")+fmt(totalPL);
-    plEl.style.color=totalPL>=0?"#16a34a":"#dc2626";
-  }else{plEl.textContent="—";plEl.style.color="#94a3b8";}
-  if(state.investments.length===0){summary.textContent="Nothing tracked yet";list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px 0;font-size:13px">No investments yet. Tap + Add to track one.</div>';return;}
-  summary.innerHTML=`${fmt(totalIn)} invested${totalPL!==0&&state.investments.some(i=>i.currentValue!=null)?` · <span style="color:${totalPL>=0?"#16a34a":"#dc2626"}">${totalPL>=0?"+":""}${fmt(totalPL)} P&L</span>`:""}`;
+    plEl.style.color=totalPL>=0?"#3f7d54":"#a8432f";
+  }else{plEl.textContent="—";plEl.style.color="#8f8570";}
+  if(state.investments.length===0){summary.textContent="Nothing tracked yet";list.innerHTML='<div style="text-align:center;color:#8f8570;padding:24px 0;font-size:13px">No investments yet. Tap + Add to track one.</div>';return;}
+  summary.innerHTML=`${fmt(totalIn)} invested${totalPL!==0&&state.investments.some(i=>i.currentValue!=null)?` · <span style="color:${totalPL>=0?"#3f7d54":"#a8432f"}">${totalPL>=0?"+":""}${fmt(totalPL)} P&L</span>`:""}`;
   list.innerHTML=[...state.investments].sort((a,b)=>b.date.localeCompare(a.date)).map(inv=>{
     const pl=inv.currentValue!=null?roundMoney(inv.currentValue-inv.amountIn):null;
     const plPct=pl!=null&&inv.amountIn>0?((pl/inv.amountIn)*100).toFixed(1):null;
-    const plColor=pl>=0?"#16a34a":"#dc2626";
+    const plColor=pl>=0?"#3f7d54":"#a8432f";
     return`<div class="inv-card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:36px;height:36px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📈</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:#ece2c8;display:flex;align-items:center;justify-content:center;color:#4a4335;flex-shrink:0">${ic('trendingUp',17)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px">${esc(inv.name)}</div>
-          <div style="font-size:11px;color:#64748b">${esc(inv.brokerage)} · ${esc(inv.date)}</div>
+          <div style="font-size:11px;color:#6e6553">${esc(inv.brokerage)} · ${esc(inv.date)}</div>
         </div>
         ${pl!=null?`<div style="text-align:right;flex-shrink:0"><div style="font-weight:700;font-size:14px;color:${plColor}">${pl>=0?"+":""}${esc(fmt(pl))}</div><div style="font-size:11px;color:${plColor}">${pl>=0?"↑":"↓"}${esc(plPct)}%</div></div>`:""}
       </div>
-      <div style="display:flex;gap:0;background:#fff;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;font-size:12px;margin-bottom:6px">
-        <div style="flex:1;padding:8px;text-align:center;border-right:1px solid #e2e8f0">
-          <div style="color:#64748b;font-size:10px;font-weight:600">INVESTED</div>
+      <div style="display:flex;gap:0;background:#fdf9ef;border-radius:8px;border:1px solid #ddd3ba;overflow:hidden;font-size:12px;margin-bottom:6px">
+        <div style="flex:1;padding:8px;text-align:center;border-right:1px solid #ddd3ba">
+          <div style="color:#6e6553;font-size:10px;font-weight:600">INVESTED</div>
           <div style="font-weight:600">${esc(fmt(inv.amountIn))}</div>
         </div>
         <div style="flex:1;padding:8px;text-align:center">
-          <div style="color:#64748b;font-size:10px;font-weight:600">CURR VALUE</div>
-          <div style="font-weight:600;color:${inv.currentValue!=null?(pl>=0?"#16a34a":"#dc2626"):"#94a3b8"}">${inv.currentValue!=null?esc(fmt(inv.currentValue)):"—"}</div>
+          <div style="color:#6e6553;font-size:10px;font-weight:600">CURR VALUE</div>
+          <div style="font-weight:600;color:${inv.currentValue!=null?(pl>=0?"#3f7d54":"#a8432f"):"#8f8570"}">${inv.currentValue!=null?esc(fmt(inv.currentValue)):"—"}</div>
         </div>
       </div>
-      ${inv.notes?`<div style="font-size:11px;color:#64748b;margin-bottom:6px">${esc(inv.notes)}</div>`:""}
+      ${inv.notes?`<div style="font-size:11px;color:#6e6553;margin-bottom:6px">${esc(inv.notes)}</div>`:""}
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="openEditInvestment(${inv.id})" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer">edit</button>
-        <button onclick="deleteInvestment(${inv.id})" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer">delete</button>
+        <button onclick="openEditInvestment(${inv.id})" style="font-size:12px;color:#5f8a95;background:none;border:none;cursor:pointer">edit</button>
+        <button onclick="deleteInvestment(${inv.id})" style="font-size:12px;color:#8f8570;background:none;border:none;cursor:pointer">delete</button>
       </div>
     </div>`;
   }).join("");
@@ -1362,14 +1426,14 @@ function renderInvestments(){
 
 // ── Portfolio: Loans ───────────────────────────────────────────────
 function openAddLoan(){
-  editingLoanId=null;document.getElementById("loanModalTitle").textContent="💸 Lend Money";
+  editingLoanId=null;document.getElementById("loanModalTitle").innerHTML=ic('lend',16)+' Lend Money';
   document.getElementById("loanPerson").value="";document.getElementById("loanAmount").value="";
   document.getElementById("loanDate").value=today();document.getElementById("loanDueDate").value="";
   document.getElementById("loanNotes").value="";show("addLoanModal");
 }
 function openEditLoan(id){
   const loan=state.loans.find(l=>l.id===id);if(!loan)return;
-  editingLoanId=id;document.getElementById("loanModalTitle").textContent="✏️ Edit Loan";
+  editingLoanId=id;document.getElementById("loanModalTitle").innerHTML=ic('edit',16)+' Edit Loan';
   document.getElementById("loanPerson").value=loan.person;document.getElementById("loanAmount").value=loan.amount;
   document.getElementById("loanDate").value=loan.date;document.getElementById("loanDueDate").value=loan.dueDate||"";
   document.getElementById("loanNotes").value=loan.notes||"";show("addLoanModal");
@@ -1419,7 +1483,7 @@ function updateLoanPayPreview(){
   if(isNaN(amt)||amt<=0){preview.style.display="none";return;}
   const outstanding=roundMoney(loan.amount-loan.amountPaid),remaining=roundMoney(Math.max(0,outstanding-amt));
   preview.style.display="block";
-  preview.innerHTML=`Receiving <strong>${esc(fmt(amt))}</strong> · ${remaining===0?'<span style="color:#16a34a">Fully paid! 🎉</span>':"Remaining: <strong>"+esc(fmt(remaining))+"</strong>"}`;
+  preview.innerHTML=`Receiving <strong>${esc(fmt(amt))}</strong> · ${remaining===0?'<span style="color:#3f7d54">Fully paid!</span>':"Remaining: <strong>"+esc(fmt(remaining))+"</strong>"}`;
 }
 function confirmLoanPayment(){
   const loan=state.loans.find(l=>l.id===payingLoanId);if(!loan)return;
@@ -1429,15 +1493,15 @@ function confirmLoanPayment(){
   if(amt>outstanding+0.001){showToast("Amount exceeds what's outstanding");return;}
   loan.amountPaid=roundMoney(loan.amountPaid+amt);
   save();hide("loanPaymentModal");renderPortfolio();updateHeader();
-  showToast(loan.amountPaid>=loan.amount?`${loan.person} fully paid up! 🎉`:`${fmt(amt)} recorded · ${fmt(roundMoney(loan.amount-loan.amountPaid))} left`);
+  showToast(loan.amountPaid>=loan.amount?`${loan.person} fully paid up!`:`${fmt(amt)} recorded · ${fmt(roundMoney(loan.amount-loan.amountPaid))} left`);
   payingLoanId=null;
 }
 function renderLoans(){
   const list=document.getElementById("loanList"),summary=document.getElementById("loanSummary");
   const totalOut=roundMoney(state.loans.reduce((s,l)=>s+Math.max(0,l.amount-l.amountPaid),0));
   const activeLoans=state.loans.filter(l=>l.amountPaid<l.amount).length;
-  summary.textContent=activeLoans>0?`${fmt(totalOut)} outstanding from ${activeLoans} loan${activeLoans>1?"s":""}`:state.loans.length>0?"All paid up! 🎉":"Nothing lent out";
-  if(state.loans.length===0){list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:24px 0;font-size:13px">No loans tracked. Tap + Add to record one.</div>';return;}
+  summary.textContent=activeLoans>0?`${fmt(totalOut)} outstanding from ${activeLoans} loan${activeLoans>1?"s":""}`:state.loans.length>0?"All paid up!":"Nothing lent out";
+  if(state.loans.length===0){list.innerHTML='<div style="text-align:center;color:#8f8570;padding:24px 0;font-size:13px">No loans tracked. Tap + Add to record one.</div>';return;}
   const sorted=[...state.loans].sort((a,b)=>{const aO=a.amount-a.amountPaid,bO=b.amount-b.amountPaid;if(bO!==aO)return bO-aO;return b.date.localeCompare(a.date);});
   list.innerHTML=sorted.map(loan=>{
     const outstanding=roundMoney(loan.amount-loan.amountPaid);
@@ -1445,22 +1509,22 @@ function renderLoans(){
     const isPaid=outstanding<=0,isOverdue=loan.dueDate&&loan.dueDate<today()&&!isPaid;
     return`<div class="loan-card ${isOverdue?"overdue":""} ${isPaid?"paid":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:36px;height:36px;border-radius:50%;background:${isPaid?"#dcfce7":"#fef3c7"};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${isPaid?"✅":"👤"}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:${isPaid?"#dfe9dc":"#f7efd6"};display:flex;align-items:center;justify-content:center;color:${isPaid?"#3f7d54":"#7a5a1f"};flex-shrink:0">${isPaid?ic('checkCircle',17):ic('person',17)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px">${esc(loan.person)}</div>
-          <div style="font-size:11px;color:#64748b">Lent ${esc(fmt(loan.amount))} on ${esc(loan.date)}${loan.dueDate?" · due "+esc(loan.dueDate):""}${isOverdue?' <span style="color:#dc2626;font-weight:700">OVERDUE</span>':""}</div>
+          <div style="font-size:11px;color:#6e6553">Lent ${esc(fmt(loan.amount))} on ${esc(loan.date)}${loan.dueDate?" · due "+esc(loan.dueDate):""}${isOverdue?' <span style="color:#a8432f;font-weight:700">OVERDUE</span>':""}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:700;font-size:15px;color:${isPaid?"#16a34a":"#f97316"}">${isPaid?"Paid":esc(fmt(outstanding))}</div>
-          ${isPaid?"":"<div style='font-size:10px;color:#94a3b8'>outstanding</div>"}
+          <div style="font-weight:700;font-size:15px;color:${isPaid?"#3f7d54":"#c17a35"}">${isPaid?"Paid":esc(fmt(outstanding))}</div>
+          ${isPaid?"":"<div style='font-size:10px;color:#8f8570'>outstanding</div>"}
         </div>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${paidPct}%;background:${isPaid?"#16a34a":"#f97316"}"></div></div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px">${paidPct}% paid back${loan.notes?" · "+esc(loan.notes):""}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${paidPct}%;background:${isPaid?"#3f7d54":"#c17a35"}"></div></div>
+      <div style="font-size:11px;color:#6e6553;margin-bottom:8px">${paidPct}% paid back${loan.notes?" · "+esc(loan.notes):""}</div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${!isPaid?`<button onclick="openLoanPayment(${loan.id})" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💰 Record Payment</button>`:""}
-        <button onclick="openEditLoan(${loan.id})" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer;padding:4px">edit</button>
-        <button onclick="deleteLoan(${loan.id})" style="font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:4px">delete</button>
+        ${!isPaid?`<button onclick="openLoanPayment(${loan.id})" style="flex:1;padding:7px;background:#3f7d54;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px">${ic('coin',13)} Record Payment</button>`:""}
+        <button onclick="openEditLoan(${loan.id})" style="font-size:12px;color:#5f8a95;background:none;border:none;cursor:pointer;padding:4px">edit</button>
+        <button onclick="deleteLoan(${loan.id})" style="font-size:12px;color:#8f8570;background:none;border:none;cursor:pointer;padding:4px">delete</button>
       </div>
     </div>`;
   }).join("");
@@ -1472,7 +1536,7 @@ function render(){
   updateHeader();
   const mo=state.maaserOwed;
   document.getElementById("maaserDisplay").textContent=fmt(mo);
-  document.getElementById("maaserDisplay").style.color=mo>0?"#b45309":"#16a34a";
+  document.getElementById("maaserDisplay").style.color=mo>0?"#a1721f":"#3f7d54";
   if(mo>0){show("paidMaaserBtn");hide("maaserPaidBadge");}
   else if(state.maaserEverPaid){hide("paidMaaserBtn");show("maaserPaidBadge");document.getElementById("maaserPaidBadge").style.display="flex";}
   else{hide("paidMaaserBtn");hide("maaserPaidBadge");}
@@ -1493,8 +1557,8 @@ function renderTxList(){
   const list=document.getElementById("txList"),empty=document.getElementById("emptyState");
   const total=state.transactions.length;
   document.getElementById("txCount").textContent=total?`${filtered.length} of ${total}`:"";
-  if(total===0){show("emptyState");empty.textContent="No transactions yet. Add your first one above!";list.innerHTML="";document.getElementById("searchInput").style.display="none";return;}
-  document.getElementById("searchInput").style.display="block";
+  if(total===0){show("emptyState");empty.textContent="No transactions yet. Add your first one above!";list.innerHTML="";hide("searchWrap");return;}
+  show("searchWrap");
   if(filtered.length===0){show("emptyState");empty.textContent=txFilter==="starred"?"No starred transactions. Long-press any card to star it.":"No results found.";list.innerHTML="";return;}
   hide("emptyState");
   let lastMonth=null;
@@ -1502,16 +1566,16 @@ function renderTxList(){
     const txMonth=tx.date.slice(0,7);let header="";
     if(txMonth!==lastMonth){lastMonth=txMonth;const d=new Date(tx.date+"T12:00:00");header=`<div class="month-header">${d.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>`;}
     return header+`<div class="card${tx.starred?" starred":""}" ontouchstart="lpStart(${tx.id},event)" ontouchend="lpEnd()" ontouchmove="lpEnd()" onmousedown="lpStart(${tx.id},event)" onmouseup="lpEnd()" oncontextmenu="return false">
-      <div style="width:36px;height:36px;border-radius:50%;background:${tx.type==="income"?"#dcfce7":"#fee2e2"};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${tx.starred?"⭐":(tx.type==="income"?"↑":"↓")}</div>
+      <div style="width:36px;height:36px;border-radius:50%;background:${tx.starred?"#f7efd6":(tx.type==="income"?"#dfe9dc":"#f0ddd4")};display:flex;align-items:center;justify-content:center;color:${tx.starred?"#a1721f":(tx.type==="income"?"#3f7d54":"#a8432f")};flex-shrink:0">${tx.starred?ic('starFilled',16):(tx.type==="income"?ic('arrowUp',16):ic('arrowDown',16))}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(tx.desc)}</div>
-        <div style="font-size:12px;color:#94a3b8">${esc(tx.date)} · balance after: ${esc(fmt(tx.balance))}</div>
-        ${tx.type==="income"?`<div style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer" onclick="toggleMaaser(${tx.id})"><div class="small-check ${tx.maaser?"checked":""}"><span style="color:#fff;font-size:9px">${tx.maaser?"✓":""}</span></div><span style="font-size:11px;color:${tx.maaser?"#b45309":"#94a3b8"}">${tx.maaser?"Maaser: "+esc(fmt(tx.maaserAmt)):"Count for Maaser"}</span></div>`:""}
+        <div style="font-size:12px;color:#8f8570">${esc(tx.date)} · balance after: ${esc(fmt(tx.balance))}</div>
+        ${tx.type==="income"?`<div style="display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer" onclick="toggleMaaser(${tx.id})"><div class="small-check ${tx.maaser?"checked":""}"><span style="color:#fdf9ef;font-size:9px">${tx.maaser?"✓":""}</span></div><span style="font-size:11px;color:${tx.maaser?"#a1721f":"#8f8570"}">${tx.maaser?"Maaser: "+esc(fmt(tx.maaserAmt)):"Count for Maaser"}</span></div>`:""}
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-weight:700;font-size:15px;color:${tx.type==="income"?"#16a34a":"#dc2626"}">${tx.type==="income"?"+":"−"}${esc(fmt(tx.amount))}</div>
-        <button onclick="event.stopPropagation();openDeleteModal(${tx.id})" style="font-size:11px;color:#94a3b8;background:none;border:none;cursor:pointer;padding:0;margin-top:2px;display:block">delete</button>
-        <button onclick="event.stopPropagation();openEdit(${tx.id})" style="font-size:11px;color:#6366f1;background:none;border:none;cursor:pointer;padding:0;margin-top:1px;display:block">edit</button>
+        <div style="font-weight:700;font-size:15px;color:${tx.type==="income"?"#3f7d54":"#a8432f"}">${tx.type==="income"?"+":"−"}${esc(fmt(tx.amount))}</div>
+        <button onclick="event.stopPropagation();openDeleteModal(${tx.id})" style="font-size:11px;color:#8f8570;background:none;border:none;cursor:pointer;padding:0;margin-top:2px;display:block">delete</button>
+        <button onclick="event.stopPropagation();openEdit(${tx.id})" style="font-size:11px;color:#5f8a95;background:none;border:none;cursor:pointer;padding:0;margin-top:1px;display:block">edit</button>
       </div>
     </div>`;
   }).join("");
@@ -1522,7 +1586,7 @@ function openDeleteModal(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx)return;pendingDeleteId=id;
   document.getElementById("deleteModalDesc").textContent=tx.desc;
   document.getElementById("deleteModalAmt").textContent=(tx.type==="income"?"+":"−")+fmt(tx.amount);
-  document.getElementById("deleteModalAmt").style.color=tx.type==="income"?"#16a34a":"#dc2626";
+  document.getElementById("deleteModalAmt").style.color=tx.type==="income"?"#3f7d54":"#a8432f";
   show("deleteModal");
 }
 function confirmDelete(){
@@ -1539,7 +1603,7 @@ function confirmDelete(){
 function openForm(type){
   formType=type;formMaaser=(type==="income"&&settings.maaserDefault);
   document.getElementById("formDesc").value="";document.getElementById("formAmount").value="";document.getElementById("formDate").value=today();
-  document.getElementById("formTitle").textContent=type==="income"?"➕ Add Income":"➖ Add Expense";
+  document.getElementById("formTitle").textContent=type==="income"?"+ Add Income":"− Add Expense";
   document.getElementById("typeIncome").className="type-btn income"+(type==="income"?" active":"");
   document.getElementById("typeExpense").className="type-btn expense"+(type==="expense"?" active":"");
   const mr=document.getElementById("maaserRow");if(type==="income"){mr.classList.remove("hidden");mr.style.display="flex";}else{mr.classList.add("hidden");}
@@ -1654,7 +1718,7 @@ document.getElementById("formDate").value=today();
 document.getElementById("pendingDate").value=today();
 document.getElementById("invDate").value=today();
 document.getElementById("loanDate").value=today();
-document.getElementById("appTitle").textContent="💳 "+settings.appName;
+document.getElementById("appTitle").innerHTML=ic('card',14)+' '+esc(settings.appName);
 document.getElementById("lockTitle").textContent=settings.appName;
 document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
 render();updateHeader();updateBadge();
