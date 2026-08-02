@@ -1,5 +1,6 @@
 export async function onRequestGet({ request, env }) {
-  if (!env.GOOGLE_CLIENT_ID) {
+  const clientId = (env.GOOGLE_CLIENT_ID || "").trim();
+  if (!clientId) {
     return new Response("Google sign-in isn't configured yet", { status: 503 });
   }
 
@@ -8,7 +9,7 @@ export async function onRequestGet({ request, env }) {
   const state = crypto.randomUUID();
 
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  authUrl.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
+  authUrl.searchParams.set("client_id", clientId);
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", "openid email");
