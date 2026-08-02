@@ -59,8 +59,6 @@
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #2a2013; color: #fdf9ef; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
     #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
-    #lockScreen .fp-btn { background: #2b3a2e; border: 2px solid #4a4335; border-radius: 50%; width: 80px; height: 80px; font-size: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 8px; }
-    #lockScreen .fp-error { color: #e08a76; font-size: 13px; margin-top: 4px; min-height: 20px; }
     .badge { display: inline-flex; align-items: center; justify-content: center; background: #a8432f; color: #fdf9ef; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
     .ac-wrap { position: relative; margin-bottom: 8px; }
     .ac-wrap .input { margin-bottom: 0; }
@@ -132,14 +130,7 @@
   <div style="color:#c9a15a"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
   <div style="color:#fdf9ef;font-size:20px;font-weight:700;font-family:var(--serif)" id="lockTitle">Virtual Bank Account</div>
   <div style="color:#8f8570;font-size:14px;text-align:center;padding:0 32px">Locked after 30 minutes of inactivity</div>
-  <button class="fp-btn" onclick="triggerBiometric()"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fdf9ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg></button>
-  <div style="color:#8f8570;font-size:14px;margin-top:-8px">Tap to unlock</div>
-  <div class="fp-error" id="fpError"></div>
-  <button onclick="togglePasswordLogin()" style="background:none;border:none;color:#5f8a95;font-size:13px;cursor:pointer;margin-top:-4px">Use password instead</button>
-  <div id="pwLoginBox" class="hidden" style="display:flex;flex-direction:column;gap:8px;width:220px">
-    <input id="pwLoginInput" type="password" class="input" placeholder="Password" style="text-align:center" onkeydown="if(event.key==='Enter')submitPasswordLogin()" />
-    <button class="btn btn-dark" onclick="submitPasswordLogin()">Sign in</button>
-  </div>
+  <button class="btn btn-dark" onclick="unlock()" style="margin-top:12px;padding:12px 28px">Tap to continue</button>
 </div>
 
 <div id="root">
@@ -349,7 +340,7 @@
       <label class="toggle-wrap"><input type="checkbox" id="settingMaaserDefault"><span class="toggle-slider"></span></label>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">Fingerprint lock</div><div class="setting-sub">Privacy screen — not encryption</div></div>
+      <div><div class="setting-label">Lock screen after idle</div><div class="setting-sub">Privacy screen — not encryption</div></div>
       <label class="toggle-wrap"><input type="checkbox" id="settingLock"><span class="toggle-slider"></span></label>
     </div>
     <div style="background:#f7efd6;border:1px solid #d4b06a;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#7a5a1f;display:flex;gap:8px;align-items:flex-start">
@@ -357,16 +348,8 @@
       <span>The lock screen is a <strong>privacy curtain</strong>, not encryption. It blocks casual viewing but not someone with browser console access.</span>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">Biometric sign-in</div><div id="fpSetupSub" class="setting-sub">Register this device's fingerprint/Face ID with your cloud account</div></div>
-      <button id="fpSetupBtn" onclick="setupFingerprint()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg> Setup</button>
-    </div>
-    <div class="setting-row">
       <div><div class="setting-label">Cloud sign-in</div><div id="cloudAuthSub" class="setting-sub">Checking…</div></div>
-      <button id="cloudAuthBtn" onclick="toggleCloudSignInBox()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 6l3 3"/><path d="M14 9l2.5 2.5"/></svg> Sign in</button>
-    </div>
-    <div id="cloudSignInBox" class="hidden" style="display:flex;gap:8px;margin:-4px 0 10px">
-      <input id="cloudPwInput" type="password" class="input" placeholder="Password" style="font-size:13px" onkeydown="if(event.key==='Enter')submitCloudPasswordLogin()" />
-      <button onclick="submitCloudPasswordLogin()" style="padding:7px 12px;background:#3f7d54;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Go</button>
+      <button id="cloudAuthBtn" onclick="cloudAuthAction()" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"></button>
     </div>
     <div class="setting-row">
       <div><div class="setting-label">Export transactions</div><div class="setting-sub">Download as CSV</div></div>
@@ -400,7 +383,7 @@
     <div id="clearSummary" style="font-size:13px;color:#4a4335;background:#f6f0df;border-radius:8px;padding:12px;margin-bottom:16px;line-height:1.8"></div>
     <div style="font-size:12px;font-weight:700;color:#a8432f;text-align:center;margin-bottom:14px">THIS CANNOT BE UNDONE</div>
     <div class="row" style="margin-bottom:0">
-      <button onclick="biometricClearAll()" style="flex:1;padding:10px;background:#a8432f;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;cursor:pointer">Yes, verify identity →</button>
+      <button onclick="confirmClearAllStep2()" style="flex:1;padding:10px;background:#a8432f;color:#fdf9ef;border:none;border-radius:8px;font-weight:600;cursor:pointer">Yes, continue →</button>
       <button class="btn btn-light" onclick="hide('clearStep1')">Cancel</button>
     </div>
   </div>
@@ -700,7 +683,6 @@ const ICON_PATHS={
   clock:'<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/>',
   importIn:'<path d="M12 3v10"/><polyline points="8,9 12,13 16,9"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
   sliders:'<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/>',
-  fingerprint:'<path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
   edit:'<path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 7.5l3 3"/>',
@@ -748,7 +730,7 @@ function openSettings(){
   document.getElementById("settingAppName").value=settings.appName||"";
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
-  refreshFingerprintSetting();refreshCloudAuthSetting();
+  refreshCloudAuthSetting();
   document.getElementById("appVersionTag").textContent="Build "+APP_VERSION;
   show("settingsModal");
 }
@@ -770,166 +752,42 @@ function applySettings(){
   hide("settingsModal");render();showToast("Settings saved ✓");
 }
 
-// ── Biometric (server-verified WebAuthn) ─────────────────────────────
+// ── Lock screen (local privacy curtain) ───────────────────────────────
 const isPWA=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 function stampActivity(){localStorage.setItem(LOCK_KEY,Date.now().toString());}
 function shouldLock(){if(!settings.lockEnabled||!isPWA)return false;return Date.now()-parseInt(localStorage.getItem(LOCK_KEY)||"0")>LOCK_TIMEOUT;}
 
-function b64urlToBuf(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;}
-function bufToB64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
-
 async function authStatus(){
   try{const res=await fetch('/api/auth/status');return await res.json();}
-  catch{return{hasCredential:false,authenticated:false};}
+  catch{return{authenticated:false};}
 }
 
-async function setupFingerprint(){
-  if(!window.PublicKeyCredential){showToast("This device/browser doesn't support biometric sign-in");return;}
-  try{
-    const optRes=await fetch('/api/auth/register-options');
-    if(!optRes.ok)throw new Error('Could not start registration');
-    const{options,challengeId}=await optRes.json();
-    options.challenge=b64urlToBuf(options.challenge);
-    options.user.id=b64urlToBuf(options.user.id);
-    if(options.excludeCredentials)options.excludeCredentials=options.excludeCredentials.map(c=>({...c,id:b64urlToBuf(c.id)}));
-    const cred=await navigator.credentials.create({publicKey:options});
-    const payload={
-      id:cred.id,rawId:bufToB64url(cred.rawId),type:cred.type,
-      response:{
-        attestationObject:bufToB64url(cred.response.attestationObject),
-        clientDataJSON:bufToB64url(cred.response.clientDataJSON),
-      },
-      clientExtensionResults:cred.getClientExtensionResults(),
-    };
-    const verifyRes=await fetch('/api/auth/register-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:payload,challengeId,deviceName:navigator.userAgent.slice(0,60)})});
-    const result=await verifyRes.json();
-    if(result.verified){
-      showToast("Fingerprint sign-in enabled ✓");
-      refreshFingerprintSetting();
-      // Reconcile with the cloud now that this device is authenticated: if
-      // this is a new device joining an existing account, pull its data;
-      // if this device already had local data, push it up.
-      await loadFromCloud();
-      return true;
-    }
-    showToast("Setup failed: "+(result.error||"not verified"));return false;
-  }catch(e){showToast("Setup cancelled or failed");return false;}
-}
-
-async function loginFingerprint(){
-  try{
-    const optRes=await fetch('/api/auth/login-options');
-    if(optRes.status===404)return{ok:false,noCredential:true};
-    if(!optRes.ok)throw new Error('Could not start login');
-    const{options,challengeId}=await optRes.json();
-    options.challenge=b64urlToBuf(options.challenge);
-    if(options.allowCredentials)options.allowCredentials=options.allowCredentials.map(c=>({...c,id:b64urlToBuf(c.id)}));
-    const cred=await navigator.credentials.get({publicKey:options});
-    const payload={
-      id:cred.id,rawId:bufToB64url(cred.rawId),type:cred.type,
-      response:{
-        authenticatorData:bufToB64url(cred.response.authenticatorData),
-        clientDataJSON:bufToB64url(cred.response.clientDataJSON),
-        signature:bufToB64url(cred.response.signature),
-        userHandle:cred.response.userHandle?bufToB64url(cred.response.userHandle):null,
-      },
-      clientExtensionResults:cred.getClientExtensionResults(),
-    };
-    const verifyRes=await fetch('/api/auth/login-verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:payload,challengeId})});
-    const result=await verifyRes.json();
-    return{ok:!!result.verified};
-  }catch{return{ok:false};}
-}
-
-async function triggerBiometric(){
-  document.getElementById("fpError").textContent="";
-  if(!window.PublicKeyCredential){unlock();return;}
-  const status=await authStatus();
-  if(!status.hasCredential){
-    const ok=await setupFingerprint();
-    if(!ok){document.getElementById("fpError").textContent="Biometric setup failed.";return;}
-    _warnedNotSignedIn=false;
-    await loadFromCloud();unlock();return;
-  }
-  const{ok}=await loginFingerprint();
-  if(ok){_warnedNotSignedIn=false;await loadFromCloud();unlock();}
-  else document.getElementById("fpError").textContent="Fingerprint not recognised. Try again.";
-}
+// The lock screen is a privacy curtain (see the Settings copy), not a real
+// auth gate, so unlocking it never touches the network — it's just a tap.
 function lock(){show("lockScreen");}
 function unlock(){hide("lockScreen");stampActivity();}
 function lockNow(){hide("settingsModal");lock();}
 document.addEventListener("pointerdown",stampActivity);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&shouldLock())lock();});
 
-async function refreshFingerprintSetting(){
+// ── Cloud sign-in (Google, restricted server-side to the owner's email) ──
+function signInWithGoogle(){window.location.href='/api/auth/google-start';}
+async function signOut(){
+  try{await fetch('/api/auth/logout',{method:'POST'});}catch{}
+  showToast("Signed out");
+  refreshCloudAuthSetting();
+}
+async function cloudAuthAction(){
   const status=await authStatus();
-  const btn=document.getElementById("fpSetupBtn"),sub=document.getElementById("fpSetupSub");
-  if(!btn)return;
-  if(status.hasCredential){btn.textContent="✓ Registered";sub.textContent="This account already has a fingerprint credential registered";}
-  else{btn.innerHTML=ic('fingerprint',13)+' Setup';sub.textContent="Register this device's fingerprint/Face ID with your cloud account";}
+  if(status.authenticated)await signOut();
+  else signInWithGoogle();
 }
-
-// ── Password sign-in (fallback for devices without a fingerprint sensor) ──
-async function loginPassword(pw){
-  try{
-    const res=await fetch('/api/auth/password-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
-    if(res.ok)return{ok:true};
-    const j=await res.json().catch(()=>({}));
-    return{ok:false,error:j.error||"Sign-in failed"};
-  }catch{return{ok:false,error:"Network error"};}
-}
-
-function togglePasswordLogin(){
-  const box=document.getElementById("pwLoginBox");
-  box.classList.toggle("hidden");
-  if(!box.classList.contains("hidden"))document.getElementById("pwLoginInput").focus();
-}
-async function submitPasswordLogin(){
-  const input=document.getElementById("pwLoginInput");
-  const pw=input.value;
-  if(!pw)return;
-  const{ok,error}=await loginPassword(pw);
-  if(ok){
-    input.value="";
-    document.getElementById("pwLoginBox").classList.add("hidden");
-    _warnedNotSignedIn=false;
-    await loadFromCloud();unlock();
-    if(window.PublicKeyCredential&&confirm("Signed in ✓. Set up fingerprint on this device for quicker unlocks next time?")){
-      await setupFingerprint();
-    }
-  }else{
-    document.getElementById("fpError").textContent=error;
-  }
-}
-
-function toggleCloudSignInBox(){
-  const box=document.getElementById("cloudSignInBox");
-  box.classList.toggle("hidden");
-  if(!box.classList.contains("hidden"))document.getElementById("cloudPwInput").focus();
-}
-async function submitCloudPasswordLogin(){
-  const input=document.getElementById("cloudPwInput");
-  const pw=input.value;
-  if(!pw)return;
-  const{ok,error}=await loginPassword(pw);
-  if(ok){
-    input.value="";
-    document.getElementById("cloudSignInBox").classList.add("hidden");
-    _warnedNotSignedIn=false;
-    showToast("Signed in ✓");
-    await loadFromCloud();
-    refreshFingerprintSetting();refreshCloudAuthSetting();
-  }else{
-    showToast(error);
-  }
-}
-
 async function refreshCloudAuthSetting(){
   const status=await authStatus();
   const sub=document.getElementById("cloudAuthSub"),btn=document.getElementById("cloudAuthBtn");
   if(!sub)return;
-  if(status.authenticated){sub.textContent="Signed in on this device";btn.textContent="✓ Signed in";}
-  else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.innerHTML=ic('key',13)+' Sign in';}
+  if(status.authenticated){sub.textContent="Signed in — syncing to the cloud";btn.textContent="Sign out";}
+  else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.innerHTML=ic('key',13)+' Sign in with Google';}
 }
 
 // ── Cloud sync (D1) ───────────────────────────────────────────────────
@@ -1015,7 +873,7 @@ async function restoreFromCloud(){
   if(!confirm("Restore from your D1 cloud backup?\n\nThis REPLACES everything on this device with the cloud copy. Use it only if your local data was lost."))return;
   showToast("Fetching backup…");
   const ok=await loadFromCloud(true);
-  if(!ok){showToast("Couldn't restore — sign in with your fingerprint first, or no backup exists yet.");return;}
+  if(!ok){showToast("Couldn't restore — sign in with Google first, or no backup exists yet.");return;}
   const n=state.transactions.length,i=state.investments.length,l=state.loans.length;
   showToast(`Restored ✓ ${n} tx · ${i} investments · ${l} loans`);
 }
@@ -1121,14 +979,9 @@ function startClearAll(){
     `• ${n} transaction${n!==1?"s":""}<br>• ${p} pending item${p!==1?"s":""}<br>• ${i} investment${i!==1?"s":""}<br>• ${l} loan record${l!==1?"s":""}`;
   show("clearStep1");
 }
-async function biometricClearAll(){
+function confirmClearAllStep2(){
   hide("clearStep1");
-  const status=window.PublicKeyCredential?await authStatus():{hasCredential:false};
-  if(!status.hasCredential){history.pushState({vba:"clearStep3"},"");show("clearStep3");return;}
-  showToast("Verify fingerprint...");
-  const{ok}=await loginFingerprint();
-  if(ok){history.pushState({vba:"clearStep3"},"");show("clearStep3");}
-  else showToast("Fingerprint not recognised — cancelled.");
+  history.pushState({vba:"clearStep3"},"");show("clearStep3");
 }
 function executeClearAll(){
   state={balance:0,transactions:[],maaserOwed:0,maaserEverPaid:false,pending:[],investments:[],loans:[]};
@@ -1726,7 +1579,21 @@ document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SV
 render();updateHeader();updateBadge();
 if(shouldLock())lock();else stampActivity();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
-loadFromCloud();
+
+// Handle the redirect back from /api/auth/google-start once it round-trips
+// through Google, then strip the query params so a refresh doesn't re-fire it.
+const authParams=new URLSearchParams(location.search);
+if(authParams.has("signedIn")){
+  showToast("Signed in ✓");
+  history.replaceState({},"",location.pathname);
+  loadFromCloud().then(()=>refreshCloudAuthSetting());
+}else{
+  if(authParams.has("authError")){
+    showToast(authParams.get("authError")||"Sign-in failed");
+    history.replaceState({},"",location.pathname);
+  }
+  loadFromCloud();
+}
 </script>
 </body>
 </html>

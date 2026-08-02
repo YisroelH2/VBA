@@ -59,4 +59,4 @@ async function requireAuth(request, env) {
   return !!session;
 }
 
-export { USER_ID, createSessionCookie, verifySession, requireAuth };
+export { USER_ID, COOKIE_NAME, createSessionCookie, verifySession, requireAuth };
