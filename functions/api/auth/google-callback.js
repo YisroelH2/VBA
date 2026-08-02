@@ -47,9 +47,12 @@ export async function onRequestGet({ request, env }) {
       grant_type: "authorization_code",
     }),
   });
-  if (!tokenRes.ok) return fail("Google sign-in failed");
-  const tokens = await tokenRes.json();
-  if (!tokens.id_token) return fail("Google sign-in failed");
+  const tokens = await tokenRes.json().catch(() => ({}));
+  if (!tokenRes.ok || !tokens.id_token) {
+    // Google's OAuth error codes (invalid_client, invalid_grant, redirect_uri_mismatch,
+    // etc.) are safe to surface — they never include the secret itself.
+    return fail(`Google sign-in failed: ${tokens.error || tokenRes.status}${tokens.error_description ? " — " + tokens.error_description : ""}`);
+  }
 
   const claims = decodeJwtPayload(tokens.id_token);
   const ownerEmail = (env.OWNER_EMAIL || "").trim().toLowerCase();
