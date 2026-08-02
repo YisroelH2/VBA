@@ -87,19 +87,21 @@
     #ctxSheet { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.4); }
     #ctxSheet .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-radius: 16px 16px 0 0; padding: 16px; max-width: 520px; margin: 0 auto; }
     .ctx-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 12px; background: #f6f0df; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; cursor: pointer; text-align: left; }
-    #calcScreen { position: fixed; inset: 0; background: #1b1611; z-index: 400; display: flex; flex-direction: column; }
-    .calc-top { flex: 0 0 auto; padding: 16px 20px 4px; display: flex; justify-content: space-between; align-items: center; }
-    .calc-display-wrap { flex: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 8px 20px 12px; }
-    .calc-prev { font-size: 22px; color: #a89c86; min-height: 28px; }
-    .calc-display { font-size: 64px; font-weight: 200; color: #fdf9ef; word-break: break-all; line-height: 1.1; }
-    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 12px; }
-    .calc-btn { height: 72px; border: none; border-radius: 50%; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
-    .calc-btn:active { opacity: 0.7; }
-    .c-num { background: #2a2013; color: #fdf9ef; }
-    .c-op  { background: #c9a15a; color: #fdf9ef; }
-    .c-fn  { background: #93876f; color: #000; }
-    .c-zero { border-radius: 36px; grid-column: span 2; justify-content: flex-start; padding-left: 26px; }
-    .calc-use { margin: 8px 12px 16px; padding: 16px; background: #3f7d54; color: #fdf9ef; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    #calcScreen { position: fixed; inset: 0; background: radial-gradient(circle at 50% 30%, #221a12 0%, #16110c 55%, #100c08 100%); z-index: 400; display: flex; flex-direction: column; align-items: center; }
+    .calc-top { flex: 0 0 auto; width: 100%; max-width: 460px; padding: 18px 20px 4px; display: flex; justify-content: space-between; align-items: center; }
+    .calc-close-btn { background: rgba(253,249,239,0.06); border: 1px solid rgba(201,161,90,0.25); border-radius: 50%; width: 34px; height: 34px; color: #d9c9a3; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .calc-title { color: #9c8f76; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
+    .calc-display-wrap { flex: 1; width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 8px 24px 16px; border-bottom: 1px solid rgba(201,161,90,0.18); }
+    .calc-prev { font-size: 20px; color: #8a7c62; min-height: 26px; letter-spacing: 0.02em; }
+    .calc-display { font-size: 60px; font-weight: 400; color: #fdf9ef; word-break: break-all; line-height: 1.1; text-shadow: 0 0 28px rgba(201,161,90,0.25); }
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 16px 8px; width: 100%; max-width: 460px; }
+    .calc-btn { aspect-ratio: 1 / 1; height: auto; max-height: 78px; border: none; border-radius: 50%; font-size: 24px; font-family: var(--serif); cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; box-shadow: 0 3px 0 rgba(0,0,0,0.35), 0 6px 14px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.12); transition: transform 0.06s, box-shadow 0.06s; }
+    .calc-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.35), inset 0 1px 2px rgba(0,0,0,0.35); }
+    .c-num { background: linear-gradient(160deg, #362a1c 0%, #241a10 100%); color: #f3ead9; border: 1px solid rgba(201,161,90,0.14); }
+    .c-op  { background: linear-gradient(160deg, #e4c07f 0%, #a1721f 100%); color: #2a1d0c; border: 1px solid rgba(255,235,190,0.4); font-weight: 700; }
+    .c-fn  { background: linear-gradient(160deg, #6b6252 0%, #4a4335 100%); color: #fdf9ef; border: 1px solid rgba(253,249,239,0.12); font-size: 19px; font-family: var(--sans); font-weight: 600; }
+    .c-zero { aspect-ratio: auto; height: 70px; border-radius: 35px; grid-column: span 2; justify-content: flex-start; padding-left: 28px; }
+    .calc-use { width: 100%; max-width: 428px; margin: 14px 16px 20px; padding: 16px; background: linear-gradient(160deg, #4a9268 0%, #3f7d54 100%); color: #fdf9ef; border: 1px solid rgba(253,249,239,0.15); border-radius: 8px; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
     #clearStep3 { position: fixed; inset: 0; background: #fdf9ef; z-index: 500; display: flex; flex-direction: column; padding: 24px; }
     /* Tab bar */
     #tabBar { position: fixed; bottom: 0; left: 0; right: 0; background: #fdf9ef; border-top: 1px solid #ddd3ba; display: flex; z-index: 45; max-width: 520px; margin: 0 auto; }
@@ -654,9 +656,9 @@
 <!-- Calculator -->
 <div id="calcScreen" class="hidden">
   <div class="calc-top">
-    <button onclick="hide('calcScreen')" style="background:none;border:none;color:#fdf9ef;font-size:22px;cursor:pointer">✕</button>
-    <div style="color:#a89c86;font-size:13px">Calculator</div>
-    <div style="width:36px"></div>
+    <button class="calc-close-btn" onclick="hide('calcScreen')">✕</button>
+    <div class="calc-title">Calculator</div>
+    <div style="width:34px"></div>
   </div>
   <div class="calc-display-wrap">
     <div class="calc-prev" id="calcPrev"></div>
