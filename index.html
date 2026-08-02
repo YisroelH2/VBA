@@ -61,7 +61,7 @@
     .small-check.checked { border-color: #a1721f; background: #a1721f; }
     .hidden { display: none !important; }
     #toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); background: #2a2013; color: #fdf9ef; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 1000; transition: opacity 0.3s; white-space: nowrap; }
-    #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); }
+    #lockScreen { position: fixed; inset: 0; background: #1c2a20; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); overscroll-behavior: none; touch-action: pan-x pan-y; }
     .badge { display: inline-flex; align-items: center; justify-content: center; background: #a8432f; color: #fdf9ef; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
     .ac-wrap { position: relative; margin-bottom: 8px; }
     .ac-wrap .input { margin-bottom: 0; }
@@ -800,7 +800,15 @@ function lock(){
 }
 function unlock(){hide("lockScreen");stampActivity();}
 function lockNow(){hide("settingsModal");lock();}
-document.addEventListener("pointerdown",stampActivity);
+// Only count activity while actually past the lock screen — otherwise a tap
+// ON the lock screen itself (the fingerprint prompt, "Try another way", or
+// even the tap that triggers a pull-to-refresh) resets the idle timer before
+// navigation completes, so the next load never re-locks. That's how a wrong
+// Google account could get shown real data: reject the sign-in, redirect
+// back, but the earlier tap had already stamped activity and cleared the lock.
+document.addEventListener("pointerdown",()=>{
+  if(document.getElementById("lockScreen").classList.contains("hidden"))stampActivity();
+});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&shouldLock())lock();});
 
 // ── Fingerprint unlock (device-local only — no server, no verification
@@ -954,6 +962,15 @@ async function loadFromCloud(force){
     if(!res.ok)return false;
     const parsed=await res.json();
     if(!parsed||!Array.isArray(parsed.transactions))return false;
+
+    // Re-check: an edit (e.g. a Settings save) may have landed locally while
+    // this request was in flight. Trust that over the now-stale copy we just
+    // fetched, or a same-tab edit made during a slow /api/sync round trip
+    // would get silently clobbered the instant this response arrives.
+    if(!force&&hasUnsyncedChanges()){
+      pushToCloud();
+      return false;
+    }
 
     if(!parsed.pending)parsed.pending=[];
     if(!parsed.investments)parsed.investments=[];
