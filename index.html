@@ -130,7 +130,10 @@
   <div style="color:#c9a15a"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
   <div style="color:#fdf9ef;font-size:20px;font-weight:700;font-family:var(--serif)" id="lockTitle">Virtual Bank Account</div>
   <div style="color:#8f8570;font-size:14px;text-align:center;padding:0 32px">Locked after 30 minutes of inactivity</div>
-  <button class="btn btn-dark" onclick="unlock()" style="margin-top:12px;padding:12px 28px">Tap to continue</button>
+  <button id="lockContinueBtn" class="btn btn-dark" onclick="unlock()" style="margin-top:12px;padding:12px 28px">Tap to continue</button>
+  <button id="lockFpBtn" class="hidden" onclick="triggerLockFingerprint()" style="background:#2b3a2e;border:2px solid #4a4335;border-radius:50%;width:74px;height:74px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:8px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fdf9ef" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/></svg></button>
+  <div id="lockFpError" style="color:#e08a76;font-size:13px;min-height:18px;text-align:center"></div>
+  <button id="lockFpFallback" class="hidden" onclick="unlock()" style="background:none;border:none;color:#5f8a95;font-size:13px;cursor:pointer;margin-top:-8px">Tap to continue instead</button>
 </div>
 
 <div id="root">
@@ -342,6 +345,10 @@
     <div class="setting-row">
       <div><div class="setting-label">Lock screen after idle</div><div class="setting-sub">Privacy screen — not encryption</div></div>
       <label class="toggle-wrap"><input type="checkbox" id="settingLock"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Fingerprint unlock</div><div id="fpUnlockSub" class="setting-sub">Checking…</div></div>
+      <button id="fpUnlockBtn" style="padding:7px 12px;background:#1c2a20;color:#fdf9ef;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px"></button>
     </div>
     <div style="background:#f7efd6;border:1px solid #d4b06a;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#7a5a1f;display:flex;gap:8px;align-items:flex-start">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 3l10 18H2z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></svg>
@@ -683,6 +690,7 @@ const ICON_PATHS={
   clock:'<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/>',
   importIn:'<path d="M12 3v10"/><polyline points="8,9 12,13 16,9"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
   sliders:'<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/>',
+  fingerprint:'<path d="M12 3a7 7 0 0 0-7 7c0 3 1 5 2 7"/><path d="M12 3a7 7 0 0 1 7 7c0 4-1 6-2 8"/><path d="M9 10a3 3 0 0 1 6 0c0 4 1 7 3 9"/><path d="M7 20c1-2 2-5 2-9a3 3 0 0 1 1-2.2"/>',
   lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
   edit:'<path d="M4 20h4L18 10a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 7.5l3 3"/>',
@@ -730,7 +738,7 @@ function openSettings(){
   document.getElementById("settingAppName").value=settings.appName||"";
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
-  refreshCloudAuthSetting();
+  refreshCloudAuthSetting();refreshFpSetting();
   document.getElementById("appVersionTag").textContent="Build "+APP_VERSION;
   show("settingsModal");
 }
@@ -746,6 +754,7 @@ function applySettings(){
     state.transactions=txs.reverse();
     state.balance=state.transactions.length>0?state.transactions[0].balance:val;
     document.getElementById("newBalanceInput").value="";
+    save();
   }
   document.getElementById("appTitle").innerHTML=ic('card',14)+' '+esc(settings.appName);
   document.getElementById("lockTitle").textContent=settings.appName;
@@ -763,12 +772,85 @@ async function authStatus(){
 }
 
 // The lock screen is a privacy curtain (see the Settings copy), not a real
-// auth gate, so unlocking it never touches the network — it's just a tap.
-function lock(){show("lockScreen");}
+// auth gate. Fingerprint unlock (below) is an optional, purely local
+// convenience layer on top of it — never a network call, so a device
+// that mis-reads a finger can never lock you out of your own data.
+function lock(){
+  show("lockScreen");
+  const fp=fpSupported()&&!!getFpCredentialId();
+  document.getElementById("lockContinueBtn").classList.toggle("hidden",fp);
+  document.getElementById("lockFpBtn").classList.toggle("hidden",!fp);
+  document.getElementById("lockFpFallback").classList.toggle("hidden",!fp);
+  document.getElementById("lockFpError").textContent="";
+}
 function unlock(){hide("lockScreen");stampActivity();}
 function lockNow(){hide("settingsModal");lock();}
 document.addEventListener("pointerdown",stampActivity);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&shouldLock())lock();});
+
+// ── Fingerprint unlock (device-local only — no server, no verification
+// beyond what the platform authenticator itself enforces) ─────────────
+function b64urlToBuf(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;}
+function bufToB64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function fpSupported(){return !!(window.PublicKeyCredential&&navigator.credentials);}
+function getFpCredentialId(){return localStorage.getItem("vba_fp_cred");}
+function randomBytes(n){const b=new Uint8Array(n);crypto.getRandomValues(b);return b;}
+
+async function setupLocalFingerprint(){
+  if(!fpSupported()){showToast("This device/browser doesn't support fingerprint unlock");return;}
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:randomBytes(32),
+      rp:{id:location.hostname,name:"Virtual Bank Account"},
+      user:{id:randomBytes(16),name:"vba-local",displayName:"VBA"},
+      pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},
+      timeout:60000,
+    }});
+    localStorage.setItem("vba_fp_cred",bufToB64url(cred.rawId));
+    showToast("Fingerprint unlock enabled ✓");
+  }catch(e){showToast("Setup cancelled or not available on this device");}
+  refreshFpSetting();
+}
+function removeLocalFingerprint(){
+  localStorage.removeItem("vba_fp_cred");
+  showToast("Fingerprint unlock turned off");
+  refreshFpSetting();
+}
+function refreshFpSetting(){
+  const btn=document.getElementById("fpUnlockBtn"),sub=document.getElementById("fpUnlockSub");
+  if(!btn)return;
+  if(!fpSupported()){
+    sub.textContent="Not supported on this device/browser";
+    btn.classList.add("hidden");
+    return;
+  }
+  btn.classList.remove("hidden");
+  if(getFpCredentialId()){
+    sub.textContent="Enabled on this device";
+    btn.textContent="Remove";
+    btn.onclick=removeLocalFingerprint;
+  }else{
+    sub.textContent="Require a fingerprint/Face ID to dismiss the lock screen";
+    btn.innerHTML=ic('fingerprint',13)+' Set up';
+    btn.onclick=setupLocalFingerprint;
+  }
+}
+async function triggerLockFingerprint(){
+  const id=getFpCredentialId();if(!id){unlock();return;}
+  document.getElementById("lockFpError").textContent="";
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:randomBytes(32),
+      allowCredentials:[{id:b64urlToBuf(id),type:"public-key",transports:["internal"]}],
+      userVerification:"required",
+      timeout:60000,
+    }});
+    unlock();
+  }catch(e){
+    document.getElementById("lockFpError").textContent="Fingerprint not recognized — try again, or tap below.";
+  }
+}
 
 // ── Cloud sign-in (Google, restricted server-side to the owner's email) ──
 function signInWithGoogle(){window.location.href='/api/auth/google-start';}
@@ -1503,7 +1585,7 @@ function toggleMaaser(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx||tx.type!=="income")return;
   if(tx.maaser){state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-tx.maaserAmt));tx.maaser=false;tx.maaserAmt=0;}
   else{tx.maaser=true;tx.maaserAmt=roundMoney(tx.amount*0.1);state.maaserOwed=roundMoney(state.maaserOwed+tx.maaserAmt);state.maaserEverPaid=false;}
-  render();
+  save();render();
 }
 function openEdit(id){
   const tx=state.transactions.find(t=>t.id===id);if(!tx)return;
