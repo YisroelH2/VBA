@@ -122,6 +122,9 @@
     .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
     /* Calc FAB - above tab bar */
     #calcFab { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom)); right: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1c2a20; color: #fdf9ef; border: none; font-size: 22px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+    /* Show/hide (eye) FAB - mirrors calc FAB on the left */
+    #eyeToggleBtn { position: fixed; bottom: calc(70px + env(safe-area-inset-bottom)); left: 24px; width: 50px; height: 50px; border-radius: 50%; background: #1c2a20; color: #c9a15a; border: 1px solid transparent; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+    #eyeToggleBtn.active { background: #2b3a2e; border-color: rgba(201,161,90,0.5); }
     .filter-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #ddd3ba; background: #fdf9ef; font-size: 12px; font-weight: 600; color: #6e6553; cursor: pointer; }
     .filter-tab.active { background: #1c2a20; color: #fdf9ef; border-color: #1c2a20; }
   </style>
@@ -142,12 +145,19 @@
 <div id="root">
   <div style="text-align:center;font-weight:700;font-size:13px;color:#7a5a1f;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.14em;font-family:var(--serif)" id="appTitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Virtual Bank Account</div>
 
+  <!-- Not-signed-in bar — only while there's no cloud session -->
+  <div id="signInBar" class="hidden" style="display:flex;align-items:center;gap:10px;background:#fdf9ef;border:1px solid #e6d7b0;border-top:3px solid #a1721f;border-radius:6px;padding:10px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(28,42,32,0.08)">
+    <span style="flex-shrink:0;color:#a1721f;display:flex"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg></span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:#1c2a20">Not signed in</div>
+      <div style="font-size:11px;color:#8f8570">Changes stay on this device until you sign in.</div>
+    </div>
+    <button onclick="signInWithGoogle()" style="flex-shrink:0;background:#1c2a20;color:#fdf9ef;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15 19 4"/><path d="m18 5 2 2"/><path d="m15 8 2 2"/></svg> Sign in</button>
+  </div>
+
   <!-- ── HEADER (always visible) ── -->
   <div style="position:relative;background:#1c2a20;border-radius:6px;padding:22px 20px 20px;margin-bottom:12px;color:#fdf9ef;border-top:3px solid #a1721f;box-shadow:0 8px 24px rgba(28,42,32,0.18)">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:11px;opacity:0.55;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.14em;font-weight:600">Total Net Worth</div>
-      <button id="eyeToggleBtn" onclick="toggleHideNumbers()" style="background:none;border:none;color:#c9a15a;opacity:0.75;cursor:pointer;padding:2px 4px;display:flex"></button>
-    </div>
+    <div style="font-size:11px;opacity:0.55;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.14em;font-weight:600">Total Net Worth</div>
     <div id="netWorthDisplay" style="font-size:44px;font-weight:700;color:#7fc99a;letter-spacing:-0.01em">$0.00</div>
     <!-- Three-column breakdown -->
     <div style="display:flex;margin-top:14px;padding-top:12px;border-top:1px solid rgba(161,114,31,0.35)">
@@ -193,7 +203,7 @@
             <div style="font-size:11px;color:#7a5a1f;font-weight:700;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.08em">Maaser Owed</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <div id="maaserDisplay" style="font-size:25px;font-weight:700;color:#8f8570;font-family:var(--serif)">$0.00</div>
-              <button onclick="openAddMaaserModal()" style="font-size:11px;color:#a1721f;background:#fdf9ef;border:1px solid #d4b06a;border-radius:4px;padding:3px 8px;cursor:pointer;font-weight:600">+ Add</button>
+              <button onclick="openAddMaaserModal()" style="font-size:11px;color:#a1721f;background:#fdf9ef;border:1px solid #d4b06a;border-radius:4px;padding:3px 8px;cursor:pointer;font-weight:600">Adjust</button>
             </div>
           </div>
         </div>
@@ -298,6 +308,9 @@
 
 <!-- Floating Calculator Button -->
 <button id="calcFab" onclick="openCalculator()" title="Calculator" style="display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2.5"/><line x1="7.5" y1="6.5" x2="16.5" y2="6.5"/><circle cx="8" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="16" cy="12" r="1"/><circle cx="8" cy="16.5" r="1"/><circle cx="12" cy="16.5" r="1"/><circle cx="16" cy="16.5" r="1"/></svg></button>
+
+<!-- Floating Show/Hide Button -->
+<button id="eyeToggleBtn" onclick="toggleHideNumbers()" title="Show / hide figures"></button>
 
 <!-- ══ MODALS ══ -->
 
@@ -443,12 +456,16 @@
 <!-- Add Owed Maaser -->
 <div id="addMaaserModal" class="modal-bg hidden">
   <div class="modal">
-    <div style="font-weight:700;font-size:16px;margin-bottom:6px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V11a7 7 0 0 1 14 0v10"/><line x1="3" y1="21" x2="21" y2="21"/></svg> Add to Maaser Owed</div>
-    <div style="font-size:13px;color:#6e6553;margin-bottom:14px">Manually add to your Maaser total — e.g. for cash income you received but didn't log.</div>
-    <input id="addMaaserAmt" class="input" type="number" placeholder="Amount to add" style="margin-bottom:8px" />
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px;display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V11a7 7 0 0 1 14 0v10"/><line x1="3" y1="21" x2="21" y2="21"/></svg> Adjust Maaser Owed</div>
+    <div style="font-size:13px;color:#6e6553;margin-bottom:14px">Manually change your Maaser total — add for cash income you didn't log, or subtract to correct an overstatement.</div>
+    <div class="row" style="margin-bottom:10px">
+      <button type="button" id="maaserAdjAddBtn" class="type-btn income active" onclick="setMaaserAdjDir('add')">Add</button>
+      <button type="button" id="maaserAdjSubBtn" class="type-btn expense" onclick="setMaaserAdjDir('subtract')">Subtract</button>
+    </div>
+    <input id="addMaaserAmt" class="input" type="number" placeholder="Amount" style="margin-bottom:8px" />
     <input id="addMaaserNote" class="input" placeholder="Note (optional)" maxlength="100" style="margin-bottom:14px" />
     <div class="row" style="margin-bottom:0">
-      <button class="btn btn-dark" style="background:#a1721f" onclick="confirmAddMaaser()">Add to Owed</button>
+      <button class="btn btn-dark" id="maaserAdjConfirmBtn" style="background:#a1721f" onclick="confirmAddMaaser()">Add to Owed</button>
       <button class="btn btn-light" onclick="hide('addMaaserModal')">Cancel</button>
     </div>
   </div>
@@ -730,7 +747,7 @@ const STORAGE_KEY="vba_v3",SETTINGS_KEY="vba_settings",LOCK_KEY="vba_last_active
 
 // Bump on every deploy that changes index.html/sw.js so it's visible in
 // Settings whether a device has picked up the latest version yet.
-const APP_VERSION="2026-08-02.1";
+const APP_VERSION="2026-09-03.1";
 console.log("VBA build "+APP_VERSION);
 
 // ── Settings ───────────────────────────────────────────────────────
@@ -745,6 +762,7 @@ function openSettings(){
   document.getElementById("settingMaaserDefault").checked=!!settings.maaserDefault;
   document.getElementById("settingLock").checked=!!settings.lockEnabled;
   document.getElementById("settingLockMinutes").value=settings.lockMinutes||30;
+  document.getElementById("newBalanceInput").value=settings.startingBalance!=null?settings.startingBalance:"";
   refreshCloudAuthSetting();refreshFpSetting();
   document.getElementById("appVersionTag").textContent="Build "+APP_VERSION;
   show("settingsModal");
@@ -758,11 +776,12 @@ function applySettings(){
   saveSettings();
   const val=parseFloat(document.getElementById("newBalanceInput").value);
   if(!isNaN(val)&&val>=0){
+    settings.startingBalance=val;
+    saveSettings();
     const txs=[...state.transactions].reverse();let running=val;
     for(let i=0;i<txs.length;i++){running=roundMoney(running+txs[i].delta);txs[i].balance=running;}
     state.transactions=txs.reverse();
     state.balance=state.transactions.length>0?state.transactions[0].balance:val;
-    document.getElementById("newBalanceInput").value="";
     save();
   }
   document.getElementById("appTitle").innerHTML=ic('card',14)+' '+esc(settings.appName);
@@ -881,6 +900,7 @@ async function signOut(){
   try{await fetch('/api/auth/logout',{method:'POST'});}catch{}
   showToast("Signed out");
   refreshCloudAuthSetting();
+  refreshSignInBar();
 }
 async function cloudAuthAction(){
   const status=await authStatus();
@@ -889,10 +909,19 @@ async function cloudAuthAction(){
 }
 async function refreshCloudAuthSetting(){
   const status=await authStatus();
+  const bar=document.getElementById("signInBar");
+  if(bar)bar.classList.toggle("hidden",!!status.authenticated);
   const sub=document.getElementById("cloudAuthSub"),btn=document.getElementById("cloudAuthBtn");
   if(!sub)return;
   if(status.authenticated){sub.textContent="Signed in — syncing to the cloud";btn.textContent="Sign out";}
   else{sub.textContent="Not signed in — sync is local-only until you sign in";btn.innerHTML=ic('key',13)+' Sign in with Google';}
+}
+// Show the top-of-app sign-in bar only when there's no cloud session.
+async function refreshSignInBar(){
+  const bar=document.getElementById("signInBar");
+  if(!bar)return;
+  const status=await authStatus();
+  bar.classList.toggle("hidden",!!status.authenticated);
 }
 
 // ── Cloud sync (D1) ───────────────────────────────────────────────────
@@ -1006,8 +1035,8 @@ let importOrder="topdown",txFilter="all",ctxId=null;
 let editingInvestmentId=null,editingLoanId=null,payingLoanId=null;
 let activeTab="ledger";
 let hideNumbers=localStorage.getItem("vba_hideNumbers")==="1";
-const EYE_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-const EYE_OFF_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+const EYE_SVG='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
 function load(){
   try{const r=localStorage.getItem(STORAGE_KEY);if(r)return JSON.parse(r);}catch{}
@@ -1031,10 +1060,15 @@ function save(){
   scheduleCloudSync();
 }
 function fmt(n){if(hideNumbers)return"••••";return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);}
+function syncEyeBtn(){
+  const b=document.getElementById("eyeToggleBtn");
+  b.innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
+  b.classList.toggle("active",hideNumbers);
+}
 function toggleHideNumbers(){
   hideNumbers=!hideNumbers;
   localStorage.setItem("vba_hideNumbers",hideNumbers?"1":"0");
-  document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
+  syncEyeBtn();
   updateHeader();render();
   if(activeTab==="portfolio")renderPortfolio();
 }
@@ -1119,12 +1153,25 @@ function executeClearAll(){
 }
 
 // ── Add Owed Maaser ────────────────────────────────────────────────
-function openAddMaaserModal(){document.getElementById("addMaaserAmt").value="";document.getElementById("addMaaserNote").value="";show("addMaaserModal");}
+let maaserAdjDir="add";
+function setMaaserAdjDir(d){
+  maaserAdjDir=d;
+  document.getElementById("maaserAdjAddBtn").className="type-btn income"+(d==="add"?" active":"");
+  document.getElementById("maaserAdjSubBtn").className="type-btn expense"+(d==="subtract"?" active":"");
+  document.getElementById("maaserAdjConfirmBtn").textContent=d==="add"?"Add to Owed":"Subtract from Owed";
+}
+function openAddMaaserModal(){document.getElementById("addMaaserAmt").value="";document.getElementById("addMaaserNote").value="";setMaaserAdjDir("add");show("addMaaserModal");}
 function confirmAddMaaser(){
   const amt=roundMoney(parseFloat(document.getElementById("addMaaserAmt").value));
   if(isNaN(amt)||amt<=0){showToast("Please enter a valid amount");return;}
-  state.maaserOwed=roundMoney(state.maaserOwed+amt);state.maaserEverPaid=false;
-  save();hide("addMaaserModal");render();showToast(fmt(amt)+" added to Maaser owed");
+  if(maaserAdjDir==="subtract"){
+    const applied=Math.min(amt,state.maaserOwed);
+    state.maaserOwed=roundMoney(Math.max(0,state.maaserOwed-amt));
+    save();hide("addMaaserModal");render();showToast(fmt(applied)+" subtracted from Maaser owed");
+  }else{
+    state.maaserOwed=roundMoney(state.maaserOwed+amt);state.maaserEverPaid=false;
+    save();hide("addMaaserModal");render();showToast(fmt(amt)+" added to Maaser owed");
+  }
 }
 
 // ── Long Press ─────────────────────────────────────────────────────
@@ -1705,8 +1752,9 @@ document.getElementById("invDate").value=today();
 document.getElementById("loanDate").value=today();
 document.getElementById("appTitle").innerHTML=ic('card',14)+' '+esc(settings.appName);
 document.getElementById("lockTitle").textContent=settings.appName;
-document.getElementById("eyeToggleBtn").innerHTML=hideNumbers?EYE_OFF_SVG:EYE_SVG;
+syncEyeBtn();
 render();updateHeader();updateBadge();
+refreshSignInBar();
 if(shouldLock())lock();else stampActivity();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 

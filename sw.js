@@ -1,4 +1,4 @@
-const CACHE = "vba-v4";
+const CACHE = "vba-v5";
 const FILES = ["./", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", e => {
